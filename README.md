@@ -1,2 +1,2 @@
-# synthetic_mobility_data_generator
+# Synthetic Mobility Data Generator
 Project for generating synthetic cellphone mobility data. 
