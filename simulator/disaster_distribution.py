@@ -18,7 +18,7 @@ class DisasterDistribution:
 
     E_x : tuple (float, float)
         first moment of the distribution. Must correspond to a location in space 
-        specified as (lat, lon).
+        specified as (lat, lon). Will help visulize the "path" of the disaster.
 
     Methods
     -------
@@ -40,53 +40,26 @@ class DisasterDistribution:
 
         self.E_x = E_x
 
-    def point_force(self, lat : float, lon : float) -> np.array:
+    def point_force(self, pois : np.array) -> np.array:
         """
         Parameters
         ----------
-        lat : float
-            latitude of desired poi 
-        lon : float 
-            longitude of desired poi 
+        pois : np.array
+            list of points (pois of interes) to calculate forces exerted.
 
         Returns
         -------
         np.array
-            2D vector describing the "push" of the event at that specific coordinate. 
-            This will be used to simulate the movement away from this point (vector represents
+            array of 2D vectors describing the "push" of the event at that specific coordinate. 
+            This will be used to simulate the movement away from this geometry (vector represents
             both direction on "push" and intensity). 
 
-            This is essentially the gradient of the disaster function, evaluated at a
-            specific point. 
+            Each element is essentially the gradient of the disaster function, evaluated at a
+            specific point. If the original geometry is an area as opposed to a point, the calculated 
+            force vector will some aggregation of the gradient of the disaster function, evaluated 
+            for the points inside that area.
 
         """
 
         return NotImplemented
     
-    def area_force(self, lat_0 : float, lat_1 : float, 
-                   lon_0 : float, lon_1 : float) -> np.array:
-        """
-        Parameters
-        ----------
-        lat_0 : float
-            latitude of the lower left corner of the desired aoi 
-        lat_1 : float
-            latitude of the upper right corner of the desired aoi 
-        lon_0 : float
-            longitude of the lower left corner of the desired aoi 
-        lon_1 : float
-            longitude of the upper right corner of the desired aoi 
-
-        Returns
-        -------
-        np.array
-            2D vector describing the "push" of the event at that specific coordinate. 
-            This will be used to simulate the movement away from this point (vector represents
-            both direction on "push" and intensity). 
-
-            This is essentially some aggregation of the gradient of the disaster function, evaluated for t.he
-            points inside this area.
-
-        """
-
-        return NotImplemented

@@ -44,10 +44,22 @@ class PopulationNetwork:
         self.nodes = nodes
         self.edges = edges
 
-
-    def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), accuracy : bool = False):
+    def flow(self, force : np.array):
         """
-        The main method for the movility simulation. Returns a mobility dataset for the 
+        Given a an array of forces excerted on the nodes of the network, the network updates
+        its edge weights to account for the given force.
+
+        Parameters
+        ----------
+        force : np.array
+            an array of 2D force vectors as returned by the point_force method of 
+            a DsasterDistribution.
+        """
+
+    def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), 
+               accuracy : bool = False) -> gpd.GeoDataFrame:
+        """
+        The main method for the mobility simulation. Returns a mobility dataset for the 
         given network. It must contain at least a geometry (i.e. Point, Polygon), a 
         device count, and a datetime. Optionally returns accuracy.
 
