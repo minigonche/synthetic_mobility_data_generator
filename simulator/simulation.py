@@ -1,9 +1,10 @@
 import numpy as np
+from abc import ABC
 import geopandas as gpd
 
 from population_network import PopulationNetwork
 
-class Simulation:
+class Simulation(ABC):
     """
     A class used to run the simulation.
     ...
@@ -55,38 +56,23 @@ class Simulation:
         self.simulated_data = gpd.GeoDataFrame()
 
     
-    def __interact(self) -> np.array:
-        """
-        Interaction between event and population network. This interacion can be understood
-        in terms of forces. Each disaster distribution has a force profile that interacts with the 
-        nodes of the network. The weights of the edges of the network are thus updated to account for 
-        this.
-
-        Returns
-        ----------
-        force_array : np.array
-            returns the force array on PopulationNetwork (population_network_0) for
-            DisasterDistribution at current iter.
-        """
-
-        return NotImplemented
-    
     def simulate(self):
         """
-        This is the main method for this package. Each iteration has two steps
+        This is the main method for this package. Each iteration has 4 steps
             1. interact: 
                 gets DisasterDistribution and calculates force array
-            2. flow: 
+            2. update_flow: 
                 calculates PopulationNetwork (population_network_1) using calculated force array
             3. sample:
                 samples data from PopulationNetwork (population_network_1), accounting for
                 previous state (population_network_0.sample())
             4. step : population_network_0 = population_network_1
 
-        The interact method creates a new population network with adjusted weights to 
+        The first two steps create a new population network with adjusted weights to 
         account for a possible disaster and adjusted node attributes to account
-        for possible fatalities. The sample method is then called on the new population
-        network to create a mobility dataset at that moment. 
+        for possible fatalities. The third step is then called on the new population
+        network to create a mobility dataset at that moment. The last step sets up the next
+        iteration. 
 
         The simulated data is then written to file.
         """

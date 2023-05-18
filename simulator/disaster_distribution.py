@@ -1,7 +1,9 @@
 import numpy as np
+from abc import ABC
 
 
-class DisasterDistribution:
+
+class DisasterDistribution(ABC):
     """
     A class used to represent an disaster snapshot. It 
     is defined by a 2D distribution representing a disaster ocurring in space at a particular time. 
@@ -42,10 +44,12 @@ class DisasterDistribution:
 
     def point_force(self, pois : np.array) -> np.array:
         """
+        Method to model direction flows in mobility.
+        
         Parameters
         ----------
         pois : np.array
-            list of points (pois of interes) to calculate forces exerted.
+            list of geometries (pois of interes) to calculate forces exerted.
 
         Returns
         -------
@@ -63,3 +67,20 @@ class DisasterDistribution:
 
         return NotImplemented
     
+    def intensity(self, pois : np.array) -> np.array:
+        """
+        Method to model fatalities and damage.
+
+        Parameters
+        ----------
+        pois : np.array
+            list of geometries (pois of interes) to calculate forces exerted.
+
+        Returns
+        -------
+        np.array
+            array of floats that describe the intensity of the disaster at a specific point. 
+
+        """
+
+        return NotImplemented

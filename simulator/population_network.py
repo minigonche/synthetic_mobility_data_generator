@@ -1,9 +1,10 @@
 
 import datetime
 import numpy as np
+from abc import ABC
 import geopandas as gpd
 
-class PopulationNetwork:
+class PopulationNetwork(ABC):
     """
     A class used to represent the population network.
 
@@ -11,22 +12,44 @@ class PopulationNetwork:
 
     Attributes
     ----------
-
-    nodes : np.array
-        1D array of PopulationNodes
+    nodes : gpd.GeoPandas
+        nodes 
+            Index:
+                RangeIndex
+            Columns:
+                Name: id, dtype: str
+                Name: geometry, dtype: geometry
+                Name: lat, dtype: float64
+                Name: lon, dtype: float64
+                Name: population, dtype: int64
     edges : np.array
         2D array of conectivity between PopulationNodes. This is equivalent to the 
         weighted adjacency matrix of the network.
+    connective_infrastructure : gpd.GeoPandas
+        Description of road or fluvial infrastructure that connects different nodes.
+        This will be used to simulate people on the connective infrastructue.
+            Index:
+                RangeIndex
+            Columns:
+                Name: node_id1, dtype: str
+                Name: node_id2, dtype: str
+                Name: geometry, dtype: LineString
+
     date : datetime
         date corresponding to this network.
 
     Methods
-    -------
-    
+    ------- 
+    update_flow()
+        update the network based on an array of forces.
+
+    sample()
+        generate points in space that simulate the a mobility dataset for the 
+        given network.
     """
 
     def __init__(self, date : datetime, nodes : np.array = np.empty, 
-                 edges : np.array = np.empty):
+                 edges : np.array = np.empty, connective_infrastructure : gpd.GeoPandas = gpd.GeoPandas()):
         """
         Parameters
         ----------
@@ -43,11 +66,12 @@ class PopulationNetwork:
         self.date = date
         self.nodes = nodes
         self.edges = edges
+        self.connective_infrastructure = connective_infrastructure
 
-    def flow(self, force : np.array):
+    def update_flow(self, force : np.array):
         """
-        Given a an array of forces excerted on the nodes of the network, the network updates
-        its edge weights to account for the given force.
+        Given an array of forces excerted on the nodes of the network, the network updates
+        itself to account for the given force.
 
         Parameters
         ----------
@@ -55,6 +79,7 @@ class PopulationNetwork:
             an array of 2D force vectors as returned by the point_force method of 
             a DsasterDistribution.
         """
+        return NotImplemented
 
     def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), 
                accuracy : bool = False) -> gpd.GeoDataFrame:
