@@ -1,9 +1,10 @@
 import datetime
+from abc import ABC
 
 # Local imports
 from disaster_distribution import DisasterDistribution
 
-class Disaster:
+class Disaster(ABC):
     """
     A class used to represent an disaster. In its most basic it 
     is defined by a series of 2D distributions. Each distribution represents a
