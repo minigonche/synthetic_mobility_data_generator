@@ -2,7 +2,7 @@ import datetime
 from abc import ABC
 
 # Local imports
-from disaster_distribution import DisasterDistribution
+from disasters.abstract.disaster_distribution import DisasterDistribution
 
 class Disaster(ABC):
     """

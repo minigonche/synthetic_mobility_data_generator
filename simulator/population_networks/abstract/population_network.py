@@ -1,19 +1,43 @@
 
 import datetime
 import numpy as np
-from abc import ABC
+import abc
 import geopandas as gpd
 
-class PopulationNetwork(ABC):
+class PopulationNetwork(abc.ABC):
     """
     A class used to represent the population network.
+    """
 
-    ...
 
-    Attributes
-    ----------
-    nodes : gpd.GeoPandas
-        nodes 
+    # Attributes
+    # ----------
+    @abc.abstractproperty
+    def date(self) -> datetime:
+        '''
+        Date corresponding to the Population Network.
+        '''
+        return NotImplemented
+        
+    @abc.abstractproperty
+    def id(self) -> str:
+        '''
+        Unique identifier for the Population Network
+        '''
+        return NotImplemented
+
+    @abc.abstractproperty
+    def name(self) -> str:
+        '''
+        Human readable name for the Population Network
+        '''
+        return NotImplemented
+
+    @abc.abstractproperty
+    def nodes(self) -> gpd.GeoPandas:
+        '''
+        Nodes of the network represented as a gpd.GeoPandas
+        Structure:
             Index:
                 RangeIndex
             Columns:
@@ -22,10 +46,21 @@ class PopulationNetwork(ABC):
                 Name: lat, dtype: float64
                 Name: lon, dtype: float64
                 Name: population, dtype: int64
-    edges : np.array
+        '''
+        return NotImplemented
+
+    @abc.abstractproperty
+    def edges(self) -> np.array:
+        '''
         2D array of conectivity between PopulationNodes. This is equivalent to the 
-        weighted adjacency matrix of the network.
-    connective_infrastructure : gpd.GeoPandas
+        weighted adjacency matrix of the network.    
+        '''
+        return NotImplemented     
+
+
+    @abc.abstractproperty
+    def connective_infrastructure(self) -> gpd.GeoPandas:
+        '''
         Description of road or fluvial infrastructure that connects different nodes.
         This will be used to simulate people on the connective infrastructue.
             Index:
@@ -33,41 +68,14 @@ class PopulationNetwork(ABC):
             Columns:
                 Name: node_id1, dtype: str
                 Name: node_id2, dtype: str
-                Name: geometry, dtype: LineString
+                Name: geometry, dtype: LineString      
+        '''
+        return None   
 
-    date : datetime
-        date corresponding to this network.
 
-    Methods
-    ------- 
-    update_flow()
-        update the network based on an array of forces.
 
-    sample()
-        generate points in space that simulate the a mobility dataset for the 
-        given network.
-    """
-
-    def __init__(self, date : datetime, nodes : np.array = np.empty, 
-                 edges : np.array = np.empty, connective_infrastructure : gpd.GeoPandas = gpd.GeoPandas()):
-        """
-        Parameters
-        ----------
-        date : datetime
-            date corresponding to this network.
-        nodes : np.array
-            1D array of PopulationNode
-        edges : np.array
-            2D array of conectivity between PopulationNodes. This is equivalent to the 
-            adjacency matrix of the network.
-        
-        """
-
-        self.date = date
-        self.nodes = nodes
-        self.edges = edges
-        self.connective_infrastructure = connective_infrastructure
-
+    # Methods
+    # ------- 
     def update_flow(self, force : np.array):
         """
         Given an array of forces excerted on the nodes of the network, the network updates

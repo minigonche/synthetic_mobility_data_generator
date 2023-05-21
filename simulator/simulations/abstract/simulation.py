@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC
 import geopandas as gpd
 
-from population_network import PopulationNetwork
+from population_networks.abstract.population_network import PopulationNetwork
 
 class Simulation(ABC):
     """
