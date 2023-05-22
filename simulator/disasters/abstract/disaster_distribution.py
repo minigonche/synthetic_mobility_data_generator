@@ -1,9 +1,9 @@
 import numpy as np
-from abc import ABC
+import abc
 
 
 
-class DisasterDistribution(ABC):
+class DisasterDistribution(abc.ABC):
     """
     A class used to represent an disaster snapshot. It 
     is defined by a 2D distribution representing a disaster ocurring in space at a particular time. 
@@ -30,18 +30,18 @@ class DisasterDistribution(ABC):
         returns the force excerted by the disaster on a given area (assumed to be a square tile)
     
     """
-
-    def __init__(self, E_x : tuple):
-        """
-        Parameters
-        ----------
-        E_x : tuple (float, float)
-            first moment of the distribution. Must correspond to a location in space 
-            specified as (lat, lon).
-        """
-
-        self.E_x = E_x
-
+    # Attributes
+    # ----------
+    @abc.abstractproperty
+    def E_x(self) -> tuple:
+        '''
+        First moment of the distribution. Must correspond to a location in 
+        space specified as (lat, lon).
+        '''
+        return NotImplemented
+    
+    # Methods
+    # -------
     def point_force(self, pois : np.array) -> np.array:
         """
         Method to model direction flows in mobility.

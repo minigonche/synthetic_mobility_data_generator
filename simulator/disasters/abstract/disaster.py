@@ -1,10 +1,11 @@
+import abc
 import datetime
-from abc import ABC
+
 
 # Local imports
 from disasters.abstract.disaster_distribution import DisasterDistribution
 
-class Disaster(ABC):
+class Disaster(abc.ABC):
     """
     A class used to represent an disaster. In its most basic it 
     is defined by a series of 2D distributions. Each distribution represents a
@@ -38,24 +39,32 @@ class Disaster(ABC):
     
     """
 
-    def __init__(self, id,  disaster_distributions : list = [], 
-                 disaster_timeline : list = []):
-        """
-        Parameters
-        ----------
-        id : str
-            id of the disaster
-        disaster_distributions : list
-            a list of DisasterDistribution, where each element represents a moment in time.
-        disaster_timeline : list
-            a list of dates corresponding to the "snapshots" of the disaster. This must 
-            have the same length as the disaster_distributions list.
-        """
-
-        self.id = id
-        self.disaster_distributions = disaster_distributions
-        self.disaster_timeline = disaster_timeline
-
+    # Attributes
+    # ----------
+    @abc.abstractproperty
+    def id(self) -> str:
+        '''
+        Id of the disaster
+        '''
+        return NotImplemented
+    
+    @abc.abstractproperty
+    def disaster_distributions(self) -> list:
+        '''
+        A list of DisasterDistribution, where each element represents a moment in time
+        '''
+        return NotImplemented
+    
+    @abc.abstractproperty
+    def disaster_timeline(self) -> list:
+        '''
+        A list of dates corresponding to the "snapshots" of the disaster. This must 
+        have the same length as the disaster_distributions list.
+        '''
+        return NotImplemented
+    
+    # Methods
+    # -------
     def is_valid(self):
         """
         Checks the following assumptions:
