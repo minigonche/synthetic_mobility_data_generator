@@ -1,1 +1,2 @@
 geopandas==0.13.0
+scikit-learn==1.2.2

@@ -3,12 +3,18 @@
 import datetime
 import numpy as np
 import abc
+import pandas as pd
 import geopandas as gpd
+from sklearn.metrics.pairwise import haversine_distances
+from math import radians
+
 from simulator.population_networks.abstract.population_network import PopulationNetwork
+import simulator.constants as con
+
 
 class PopulationNetworkFromHDX(PopulationNetwork):
     """
-    # Class for constructing a population network from the HDX data.
+    Class for constructing a population network from the HDX data.
     """
 
 
@@ -16,10 +22,10 @@ class PopulationNetworkFromHDX(PopulationNetwork):
                 date : datetime,
                 id : str,
                 name : str,
-                world_pop_density : str,
-                populated_places : str,
-                road_lines : str,
-                building_polygons : str):
+                world_pop_density_file : str,
+                populated_places_folder : str,
+                road_lines_folder : str,
+                building_polygons_folder : str):
         '''
         Constructor method
 
@@ -31,16 +37,16 @@ class PopulationNetworkFromHDX(PopulationNetwork):
             Id of the Population Network
         name : str
             Name of the Population Network
-        world_pop_density : str
+        world_pop_density_file : str
             Location of the World Population .csv file downloaded from HDX.
             Example: https://data.humdata.org/dataset/worldpop-population-density-for-costa-rica 
-        populated_places : str
+        populated_places_folder : str
             Location of the folder containing the OSM populated places shapefile. 
             Example: https://data.humdata.org/dataset/hotosm_cri_populated_places
-        road_lines : str
+        road_lines_folder : str
             Location of the folder containing the OSM road line strings shapefile. 
             Example: https://data.humdata.org/dataset/hotosm_cri_roads
-        building_polygons : str
+        building_polygons_folder : str
             Location of the folder containing the OSM building polygons shapefile. 
             Example: https://data.humdata.org/dataset/hotosm_cri_buildings
          
@@ -50,10 +56,12 @@ class PopulationNetworkFromHDX(PopulationNetwork):
         self.__date = date
         self.__id = id
         self.__name = name
-        self.world_pop_density = world_pop_density
-        self.populated_places = populated_places
-        self.road_lines = road_lines
-        self.building_polygons = building_polygons
+        self.world_pop_density_file = world_pop_density_file
+        self.populated_places_folder = populated_places_folder
+        self.road_lines_folder = road_lines_folder
+        self.building_polygons_folder = building_polygons_folder
+
+        
 
 
     # Attributes
@@ -82,15 +90,26 @@ class PopulationNetworkFromHDX(PopulationNetwork):
                 Name: lon, dtype: float64
                 Name: population, dtype: int64
         '''
-        return NotImplemented
+        # Checks if None
+        if self.nodes is None:
+            self.build()
+
+        return self.nodes
 
     @abc.abstractproperty
-    def edges(self) -> np.array:
+    def edges(self) -> pd.DataFrame:
         '''
-        2D array of conectivity between PopulationNodes. This is equivalent to the 
-        weighted adjacency matrix of the network.    
+        Pandas DataFrame with the edges. All edges are symmetric. Missing edges will have a value of 0
+        Columns:
+            node_id1 : id of the first node, dtype: str
+            node_id2 : id of the second node, dtype: str
+            value : connectivity value, dtype : float
+
         '''
-        return NotImplemented     
+        if self.edges is None:
+            self.build()
+
+        return self.edges  
 
 
     @abc.abstractproperty
@@ -123,6 +142,8 @@ class PopulationNetworkFromHDX(PopulationNetwork):
             a DsasterDistribution.
         """
         return NotImplemented
+
+
 
     def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), 
                accuracy : bool = False) -> gpd.GeoDataFrame:
@@ -158,3 +179,57 @@ class PopulationNetworkFromHDX(PopulationNetwork):
         """
 
         return NotImplemented
+
+
+    def build(self):
+        '''
+        Method that constructs the population network and builds its necessary attributes.
+        Also this method saves the components to avoid recomputing
+        '''
+
+        # Nodes
+        # ----------
+
+        # Checks for Cache
+        self.nodes = self.__get_nodes_from_cache()
+        
+        # If not existent, builds it
+        if self.nodes is None:
+
+
+            # Density
+            world_pop_density = pd.read_csv(self.world_pop_density_file)
+            world_pop_density = gpd.GeoDataFrame(world_pop_density, geometry=gpd.points_from_xy(world_pop_density.X, world_pop_density.Y), crs=con.USUAL_PROJECTION)
+
+            # Populated Places
+            populated_places = gpd.read_file(self.populated_places_folder)
+
+            # Uses Haversine Distance
+            # (A lot faster than geopandas.distance)
+            world_pop_density["lon_rad"] = world_pop_density.geometry.x.apply(lambda v : radians(v))
+            world_pop_density["lat_rad"] = world_pop_density.geometry.y.apply(lambda v : radians(v))
+
+            populated_places["lon_rad"] = populated_places.geometry.x.apply(lambda v : radians(v))
+            populated_places["lat_rad"] = populated_places.geometry.y.apply(lambda v : radians(v))
+
+            # Extracts closest city
+            closest_city = world_pop_density.apply(lambda row : np.argmin(haversine_distances(populated_places[["lat_rad", "lon_rad"]], [[row["lat_rad"], row["lon_rad"]]])[:,0]), axis = 1)
+
+            # Groups, sums and assigns
+            world_pop_density["city"] = closest_city
+            population = world_pop_density[["Z","city"]].groupby("city").sum()
+
+
+            # Forms the final Frame
+            populated_places[con.ID] = populated_places.apply(lambda row : f"{row['name']} - {row.name}", axis = 1)
+            populated_places[con.POPULATION] = population
+            populated_places[con.LAT] = populated_places.geometry.y
+            populated_places[con.LON] = populated_places.geometry.x
+
+            # Assigns
+            self.nodes = populated_places[[con.ID, con.GEOMETRY, con.LAT, con.LON, con.POPULATION]].copy()
+
+            # Saves
+            self.__save_nodes_to_cache(self.nodes)
+
+

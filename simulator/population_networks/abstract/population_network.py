@@ -3,6 +3,9 @@ import datetime
 import numpy as np
 import abc
 import geopandas as gpd
+import os
+
+import simulator.utils.cache as cf
 
 class PopulationNetwork(abc.ABC):
     """
@@ -123,3 +126,25 @@ class PopulationNetwork(abc.ABC):
         """
 
         return NotImplemented
+
+
+    # Cache Methods
+    # ----------------------
+    def __build_nodes_id(self):
+        '''Builds the unique ID for the nodes of the given population network'''
+        return(f"{self.ID}-nodes")
+
+    def __get_nodes_from_cache(self):
+        # Gets the complete path
+        filepath = cf.get_cache_file(self.__build_nodes_id())
+
+        if not os.path.exists(filepath):
+            return None
+
+        return gpd.read_file(filepath)
+
+    def __save_nodes_to_cache(self, nodes : gpd.GeoDataFrame):
+        # Gets the complete path
+        filepath = cf.get_cache_file(self.__build_nodes_id())
+
+        nodes.to_file(filepath)
