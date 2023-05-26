@@ -78,18 +78,6 @@ class PopulationNetworkFromHDX(PopulationNetwork):
 
     @abc.abstractproperty
     def nodes(self) -> gpd.GeoPandas:
-        '''
-        Nodes of the network represented as a gpd.GeoPandas
-        Structure:
-            Index:
-                RangeIndex
-            Columns:
-                Name: id, dtype: str
-                Name: geometry, dtype: geometry
-                Name: lat, dtype: float64
-                Name: lon, dtype: float64
-                Name: population, dtype: int64
-        '''
         # Checks if None
         if self.nodes is None:
             self.build()
@@ -98,14 +86,6 @@ class PopulationNetworkFromHDX(PopulationNetwork):
 
     @abc.abstractproperty
     def edges(self) -> pd.DataFrame:
-        '''
-        Pandas DataFrame with the edges. All edges are symmetric. Missing edges will have a value of 0
-        Columns:
-            node_id1 : id of the first node, dtype: str
-            node_id2 : id of the second node, dtype: str
-            value : connectivity value, dtype : float
-
-        '''
         if self.edges is None:
             self.build()
 
