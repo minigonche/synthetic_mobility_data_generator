@@ -1,9 +1,10 @@
 import abc
+import warnings
 import datetime
 
 
 # Local imports
-from disasters.abstract.disaster_distribution import DisasterDistribution
+from simulator.disasters.abstract.disaster_function import DisasterFunction
 
 class Disaster(abc.ABC):
     """
@@ -17,12 +18,16 @@ class Disaster(abc.ABC):
     Attributes
     ----------
     id : str
-        id of the disaster. Useful in case there is more than one disaster at once.
-    disaster_distributions : list
-        a list of DisasterDistribution, where each element represents a moment in time.
+            id of the disaster. Useful in case there is more than one disaster at once.
+    epicenter : tuple   
+        lat, lon of the epicenter
+    start_date : datetime
+        start datetime of the disaster
+    disaster_functions : list
+        a list of DisasterFunction, where each element represents a moment in time.
     disaster_timeline : list
         a list of dates corresponding to the "snapshots" of the disaster. This must 
-        have the same length as the disaster_distributions list.
+        have the same length as the disaster_functions list.
 
     Methods
     -------
@@ -49,9 +54,24 @@ class Disaster(abc.ABC):
         return NotImplemented
     
     @abc.abstractproperty
-    def disaster_distributions(self) -> list:
+    def epicenter(self) -> tuple:
         '''
-        A list of DisasterDistribution, where each element represents a moment in time
+        latitude and longited of the epicenter 
+         of the disaster
+        '''
+        return NotImplemented
+    
+    @abc.abstractproperty
+    def start_date(self) -> datetime:
+        '''
+        Start date of the disaster
+        '''
+        return NotImplemented
+    
+    @abc.abstractproperty
+    def disaster_functions(self) -> list:
+        '''
+        A list of DisasterFunction, where each element represents a moment in time
         '''
         return NotImplemented
     
@@ -59,7 +79,7 @@ class Disaster(abc.ABC):
     def disaster_timeline(self) -> list:
         '''
         A list of dates corresponding to the "snapshots" of the disaster. This must 
-        have the same length as the disaster_distributions list.
+        have the same length as the disaster_functions list.
         '''
         return NotImplemented
     
@@ -68,21 +88,30 @@ class Disaster(abc.ABC):
     def is_valid(self):
         """
         Checks the following assumptions:
-        1. len(disaster_distributions) == len(disaster_timeline) # no missing data
+        1. len(disaster_functions) == len(disaster_timeline) # no missing data
         2. len(set(disaster_timeline)) == len(disaster_timeline) # no repeted dates
 
-        Raises
-        ----------
-        InvalidDisaster 
-            if fails check, raises exception
+        Returns
+        -------
+        tuple
+            if fails check, returns (False, message), else (True, 'OK')
 
         """
-        return NotImplemented
+        message = 'OK'
+        if len(self.disaster_functions()) != len(self.disaster_timeline()):
+            return (False, f"disaster_functions length {len(self.disaster_functions())} \
+            does not match disaster_timeline lenght {len(self.disaster_timeline())}.")
+        if len(set(self.disaster_timeline())) != len(self.disaster_timeline()):
+            return (False, f"disaster_timeline has repeated dates.")
+        if len(self.disaster_functions()) == 0:
+            message = warnings.warn("Disaster is empty. Run generate_disaster() or initialize manually", warnings.UserWarning)
+     
+        return (True, message)
     
     def adjust_resolution(self, resolution : tuple):
         """
         Adjust the resolution of the disaster up or down by expanding or shrinking both
-        the disaster_distributions and disaster_timeline.
+        the disaster_functions and disaster_timeline.
 
         Parameters
         ----------
@@ -92,47 +121,12 @@ class Disaster(abc.ABC):
         """
         return NotImplemented
 
-    def generate_disaster(self, dist_0 : DisasterDistribution, dist_n : DisasterDistribution, 
-                          steps : int, time_unit : tuple):
+    def generate_disaster(self, **kwargs):
         """
-        Given two distirbutions (a source and a target), a number of steps and a time unit,
-        creates a list of distributions that start with the source distribution
-        and ends with the target distribution in a given number of steps. 
+        Method to automatically create a disaster. Should set the values of
+        disaster_functions and disaster_timeline accordinly.
 
-        Parameters
-        ----------
-        dist_0 : DisasterDistribution
-            source disaster distribution
-        dist_n : DisasterDistribution
-            target disaster distribution
-        steps : int
-            number of steps to take between dist_0 and dist_n. This will essentially be
-            len(disaster_distributions)
-        time_unit : tuple (int, 'str')
-            time unit for the steps. This will be used to compute disaster_timeline. 
         """
 
         return NotImplemented
     
-    def get_snapshot(self, date : datetime, exact : bool = True) -> DisasterDistribution:
-
-        """
-        Checks that datetime exists and returns the corresponding DisasterDistribution. If 
-        exact == False, returns the DisasterDistribution for the closest date. 
-
-        Parameters
-        ----------
-        date : datetime
-            date to get corresponding DisasterDistribution
-
-        exact : bool
-            return DisasterDistribution corresponding to exact date match (default is True)
-
-        Returns
-        -------
-        DisasterDistribution
-            an instance of DisasterDistribution, corresponding to the specified date.
-        """
-
-
-        return NotImplemented
