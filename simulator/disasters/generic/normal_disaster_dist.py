@@ -54,14 +54,20 @@ class NormalDisasterFun(DisasterFunction):
 
     
     def __bearing(self, poi) -> float:
-        lat = poi[0]
-        lon = poi[1]
-        x = np.sin(lon-self.__mean[1]) * np.cos(lat)
-        y = np.cos(self.__mean[0])*np.sin(lat) \
-           - np.sin(self.__mean[0])*np.cos(lat)*np.cos(lon-self.__mean[1])
-        theta = np.arctan2(y, x)
+        lat_1 = np.radians(self.__mean[0])
+        lon_1 = np.radians(self.__mean[1])
+        lat_2 = np.radians(poi[0])
+        lon_2 = np.radians(poi[1])
 
-        return (theta*180/np.pi + 360) % 360 # in degrees
+        delta_lon = lon_2 - lon_1
+
+        x = np.sin(delta_lon) * np.cos(lat_2)
+        y = np.cos(lat_1)*np.sin(lat_2) \
+           - np.sin(lat_1)*np.cos(lat_2)*np.cos(delta_lon)
+        theta = np.arctan2(x, y)
+
+        # (theta*180/np.pi + 360) % 360  # in degrees 
+        return (theta*180/np.pi + 360) % 360 # in degrees 
 
     def __density(self, poi) -> float:
         """
@@ -94,7 +100,7 @@ class NormalDisasterFun(DisasterFunction):
             array of angles describing the bearing at a given point  
 
         """
-        pois_coord = [(p.y, p.x) for p in pois]
+        pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
         pois_coord = np.asarray(pois_coord)
 
         bearings = self.__bearing(np.transpose(pois_coord))
@@ -117,7 +123,7 @@ class NormalDisasterFun(DisasterFunction):
             each element is essentially the density function evaluated at that specific point.
 
         """
-        pois_coord = [(p.y, p.x) for p in pois]
+        pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
         pois_coord = np.asarray(pois_coord)
 
         intensity = self.__density(np.transpose(pois_coord))
