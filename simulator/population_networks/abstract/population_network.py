@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 import abc
 import geopandas as gpd
+import pandas as pd
 import os
 
 import simulator.utils.cache as cf
@@ -53,10 +54,13 @@ class PopulationNetwork(abc.ABC):
         return NotImplemented
 
     @abc.abstractproperty
-    def edges(self) -> np.array:
+    def edges(self) -> pd.DataFrame:
         '''
-        2D array of conectivity between PopulationNodes. This is equivalent to the 
-        weighted adjacency matrix of the network.    
+        Pandas DataFrame with the edges. All edges are symmetric. Missing edges will have a value of 0
+        Columns:
+            node_id1 : id of the first node, dtype: str
+            node_id2 : id of the second node, dtype: str
+            value : connectivity value, dtype : float
         '''
         return NotImplemented     
 
