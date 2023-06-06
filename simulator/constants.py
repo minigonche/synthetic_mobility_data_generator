@@ -12,10 +12,16 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config.js
 # Global constants from config
 DATA_FOLDER = CONFIG['data_folder']
 CACHE_FOLDER = CONFIG["cache_folder"] 
+ERRORS_FOLDER = CONFIG["errors_folder"]
+ERRORS_FILE = "errors.csv"
 
 # Creates Cache folder if it does not exist
 if not os.path.exists(CACHE_FOLDER):
     os.mkdir(CACHE_FOLDER)
+
+# Creates errors folder if it does not exist
+if not os.path.exists(ERRORS_FOLDER):
+    os.mkdir(ERRORS_FOLDER)
 
 # Projection
 USUAL_PROJECTION = "EPSG:4326"
@@ -35,6 +41,24 @@ VALUE = "value"
 NODE_ID1 = "node_id1"
 NODE_ID2 = "node_id2"
 DISTANCE = "distance"
+DATETIME = "datetime"
+GEO_ID = "geo_id"
+HOUR = "hour"
+
+# fb specific column names
+DAY_OF_WEEK = "day_of_week"
+QUAD_KEY = "quadkey"
+N_BASELINE = "n_baseline"
+N_CRISIS = "n_crisis"
+N_DIFFERENCE = "n_difference"
+DENSITY_BASELINE = "density_baseline"
+DENSITY_CRISIS = "density_crisis"
+PERCENT_CHANGE = "percent_change"
+Z_SCORE = "z_score"
+DS = "ds"
+
+# Min columns for simulated dataset
+DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
 
 # City
 MIN_CITY_RADIUS_KM = 1.5
@@ -48,6 +72,12 @@ LOCATION_ID = "location_id"
 NODE = "node"
 EDGE = "edge"
 
+
 # Forces
 ATTRACTIVE_FORCE = "attractive_force"
 REPELLING_FORCE = "repelling_force"
+
+# Bing Map Tiles Constants
+LEVEL_DETAIL = 14
+
+# fb data constants
