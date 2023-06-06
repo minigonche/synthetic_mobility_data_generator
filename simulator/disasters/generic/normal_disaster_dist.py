@@ -97,7 +97,7 @@ class NormalDisasterFun(DisasterFunction):
         Returns
         -------
         np.array
-            array of angles describing the bearing at a given point  
+            array of angles describing the bearing at a given point in degrees
 
         """
         pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
@@ -119,8 +119,7 @@ class NormalDisasterFun(DisasterFunction):
         Returns
         -------
         np.array
-            array of floats that describe the intensity of the disaster at a specific point, 
-            each element is essentially the density function evaluated at that specific point.
+            array of floats that describe the intensity of the disaster at a specific point.
 
         """
         pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
