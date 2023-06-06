@@ -15,30 +15,26 @@ class PopulationNetwork(abc.ABC):
 
 
     # Attributes
-    # ----------
-    @abc.abstractproperty
-    def date(self) -> datetime:
-        '''
-        Date corresponding to the Population Network.
-        '''
-        return NotImplemented
-        
-    @abc.abstractproperty
+    # ---------
+    @property
+    @abc.abstractmethod
     def id(self) -> str:
         '''
         Unique identifier for the Population Network
         '''
         return NotImplemented
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def name(self) -> str:
         '''
         Human readable name for the Population Network
         '''
         return NotImplemented
 
-    @abc.abstractproperty
-    def nodes(self) -> gpd.GeoPandas:
+    @property
+    @abc.abstractmethod
+    def nodes(self) -> gpd.GeoDataFrame:
         '''
         Nodes of the network represented as a gpd.GeoPandas
         Structure:
@@ -53,7 +49,8 @@ class PopulationNetwork(abc.ABC):
         '''
         return NotImplemented
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def edges(self) -> pd.DataFrame:
         '''
         Pandas DataFrame with the edges. All edges are symmetric. Missing edges will have a value of 0
@@ -65,11 +62,12 @@ class PopulationNetwork(abc.ABC):
         return NotImplemented     
 
 
-    @abc.abstractproperty
-    def connective_infrastructure(self) -> gpd.GeoPandas:
+    @property
+    @abc.abstractmethod
+    def connective_infrastructure(self) -> gpd.GeoDataFrame:
         '''
         Description of road or fluvial infrastructure that connects different nodes.
-        This will be used to simulate people on the connective infrastructue.
+        This will be used to simulate people on the connective infrastructure.
             Index:
                 RangeIndex
             Columns:
@@ -134,21 +132,47 @@ class PopulationNetwork(abc.ABC):
 
     # Cache Methods
     # ----------------------
-    def __build_nodes_id(self):
-        '''Builds the unique ID for the nodes of the given population network'''
-        return(f"{self.ID}-nodes")
+    def build_nodes_id(self):
+        '''Builds the unique ID for the nodes of the given population network in Cache'''
+        return(f"{self.id}-nodes")
 
-    def __get_nodes_from_cache(self):
+    def build_edges_id(self):
+        '''Builds the unique ID for the edges of the given population network in Cache'''
+        return(f"{self.id}-edges")
+
+    def get_nodes_from_cache(self, include_message = True):
         # Gets the complete path
-        filepath = cf.get_cache_file(self.__build_nodes_id())
+        filepath = cf.get_cache_file(self.build_nodes_id())
 
         if not os.path.exists(filepath):
             return None
 
+        if include_message:
+            print("   Reading nodes from Cache")
+
         return gpd.read_file(filepath)
 
-    def __save_nodes_to_cache(self, nodes : gpd.GeoDataFrame):
+    def save_nodes_to_cache(self, nodes : gpd.GeoDataFrame):
         # Gets the complete path
-        filepath = cf.get_cache_file(self.__build_nodes_id())
+        filepath = cf.get_cache_file(self.build_nodes_id())
 
         nodes.to_file(filepath)
+
+
+    def get_edges_from_cache(self, include_message = True):
+        # Gets the complete path
+        filepath = cf.get_cache_file(self.build_edges_id())
+
+        if not os.path.exists(filepath):
+            return None
+
+        if include_message:
+            print("   Reading edges from Cache")
+
+        return gpd.read_file(filepath)
+
+    def save_edges_to_cache(self, edges : gpd.GeoDataFrame):
+        # Gets the complete path
+        filepath = cf.get_cache_file(self.build_edges_id())
+
+        edges.to_file(filepath)
