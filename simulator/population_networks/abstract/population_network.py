@@ -6,7 +6,9 @@ import geopandas as gpd
 import pandas as pd
 import os
 
+import simulator.constants as con
 import simulator.utils.cache as cf
+
 
 class PopulationNetwork(abc.ABC):
     """
@@ -94,6 +96,46 @@ class PopulationNetwork(abc.ABC):
         """
         return NotImplemented
 
+    def sample_from_node(self, node_id : str, num_points : int = 1):
+        '''
+        Method that returns a sample point from the corresponding node
+
+        Parameters
+        ----------
+        node_id : str
+            The node id
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame  with random lon and lat tuples from the node 
+        '''
+
+        arr = self.nodes.loc[[node_id]].sample_points(num_points).values
+        return pd.DataFrame({con.LON : np.apply_along_axis(lambda p: p.x, 0, arr),
+                             con.LAT : np.apply_along_axis(lambda p: p.y, 0, arr)})
+  
+
+    def sample_from_edge(self, edge_id : str, num_points : int = 1):
+        '''
+        Method that returns a sample point from the corresponding edge
+
+        Parameters
+        ----------
+        edge_id : str
+            The edge id
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame  with random lon and lat tuples from the edge 
+        '''
+
+        arr = self.edges.loc[[edge_id]].sample_points(num_points).values
+        return pd.DataFrame({con.LON : np.apply_along_axis(lambda p: p.x, 0, arr),
+                        con.LAT : np.apply_along_axis(lambda p: p.y, 0, arr)})   
+
+
     def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), 
                accuracy : bool = False) -> gpd.GeoDataFrame:
         """
@@ -150,13 +192,18 @@ class PopulationNetwork(abc.ABC):
         if include_message:
             print("   Reading nodes from Cache")
 
-        return gpd.read_file(filepath)
+        nodes = gpd.read_file(filepath)
+        # Sets Index
+        nodes.index = nodes[con.ID]
+
+        return nodes 
 
     def save_nodes_to_cache(self, nodes : gpd.GeoDataFrame):
         # Gets the complete path
         filepath = cf.get_cache_file(self.build_nodes_id())
-
-        nodes.to_file(filepath)
+        
+        # Drops the index columns (which is the same as the id column). Will be restores when loaded
+        nodes.reset_index(drop=True).to_file(filepath)
 
 
     def get_edges_from_cache(self, include_message = True):
@@ -169,10 +216,15 @@ class PopulationNetwork(abc.ABC):
         if include_message:
             print("   Reading edges from Cache")
 
-        return gpd.read_file(filepath)
+        edges = gpd.read_file(filepath)
+        # Sets the index 
+        edges.index = pd.MultiIndex.from_tuples(edges.apply(lambda row: (row[con.NODE_ID1], row[con.NODE_ID2]), axis = 1), names=[con.NODE_ID1, con.NODE_ID2])
+
+        return edges
 
     def save_edges_to_cache(self, edges : gpd.GeoDataFrame):
         # Gets the complete path
         filepath = cf.get_cache_file(self.build_edges_id())
 
-        edges.to_file(filepath)
+        # Drops the index columns (which is the same as the node_id1 and node_id2 column). Will be restores when loaded
+        edges.reset_index(drop=True).to_file(filepath)

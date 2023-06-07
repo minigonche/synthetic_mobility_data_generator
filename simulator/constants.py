@@ -28,6 +28,9 @@ USUAL_PROJECTION = "EPSG:4326"
 MANIPULATION_PROJECTION = 'EPSG:3857'
 BUFFER_PROJECTION = "EPSG:3395"
 
+# Degrees
+DEGREE_EQUIVALENT_IN_KM = 111.32
+
 SIMPLIFICATION_CONSTANTS_METERS = 500
 
 
@@ -64,6 +67,21 @@ COUNTRY = "country"
 
 # Min columns for simulated dataset
 DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
+POSITION = "position"
+DATE = "date"
+NOISE = "noise"
+
+
+
+LON_X = "lon_x"
+LAT_X = "lat_x"
+LAT_Y = "lat_y"
+LON_Y = "lon_y"
+
+
+# Noise
+CITY_NOISE =  0.009 # 1000m in the equator
+ROAD_NOISE = 0.0018 # 200m in the equator
 FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
                         DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
                         DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
@@ -73,6 +91,12 @@ MIN_CITY_RADIUS_KM = 1.5
 MIN_BUILDING_RADIUS_KM = 0.5
 MIN_POPULATION = 500
 MAX_DISTANCE_BETWEEN_ADJACENT_CITIES_KM = 45
+
+# Roads
+ROADS_WIDTH_KM = 0.35
+ROAD_LENGTH = "road_length"
+ROAD_SAMPLE_DENSITY_BY_KM = 25
+
 
 # Simulator Constants
 LOCATION = "location"
@@ -89,4 +113,11 @@ REPELLING_FORCE = "repelling_force"
 LEVEL_DETAIL = 14
 
 # fb data constants
+
+FINAL_FORCE = "final_force"
+REACH_PROBABILITY = "reach_probability"
+
+# Node Positions
+START_NODE = "start_node"
+END_NODE = "end_node"
 EPSILON = 1
