@@ -67,6 +67,10 @@ COUNTRY = "country"
 
 # Min columns for simulated dataset
 DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
+FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
+                        DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
+
 POSITION = "position"
 DATE = "date"
 NOISE = "noise"
@@ -82,9 +86,7 @@ LON_Y = "lon_y"
 # Noise
 CITY_NOISE =  0.009 # 1000m in the equator
 ROAD_NOISE = 0.0018 # 200m in the equator
-FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
-                        DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
-                        DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
+
 
 # City
 MIN_CITY_RADIUS_KM = 1.5
@@ -113,11 +115,10 @@ REPELLING_FORCE = "repelling_force"
 LEVEL_DETAIL = 14
 
 # fb data constants
-
 FINAL_FORCE = "final_force"
 REACH_PROBABILITY = "reach_probability"
+EPSILON = 1
 
 # Node Positions
 START_NODE = "start_node"
 END_NODE = "end_node"
-EPSILON = 1

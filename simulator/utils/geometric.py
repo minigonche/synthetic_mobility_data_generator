@@ -211,9 +211,6 @@ def extract_samples_from_geo_frame(geo_frame : gpd.GeoDataFrame,
         
     return sample_points
 
-
-
-
 def centroid(geo_data_file : str, ids : int) -> tuple:
     try:
         gdf = gpd.read_file(geo_data_file)
