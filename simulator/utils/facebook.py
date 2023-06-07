@@ -121,3 +121,21 @@ def to_fb_date(t : datetime) -> datetime:
         fb_date = t.replace(second=0, microsecond=0, minute=0, hour=8)
 
     return fb_date
+
+def tile_centroid(quadkey : str) -> tuple:
+    """
+    Method to calculated the latitude and longitude of the centroid of a tile.
+
+    Parameters
+    ----------
+    quadkey : str
+        the quadkey corresponding to the tile. Can be a np.array
+    
+    Returns
+    -------
+    tuple 
+        (lat, lon) or array of tuples of the centroid of the tile.
+
+    """
+
+    return (0, 0)

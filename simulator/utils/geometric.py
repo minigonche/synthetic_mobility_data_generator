@@ -1,9 +1,15 @@
 # Geometric Functions
+import sys
+import datetime
 import numpy as np
 from shapely.geometry import Polygon, Point
 import simulator.constants as con
 import geopandas as gpd
 from math import radians, sin, cos, asin, sqrt
+
+# local imports
+import simulator.utils.errors as errors
+
 
 def trim_road(geometry, lon_1, lat_1, lon_2, lat_2):
     '''
@@ -71,3 +77,16 @@ def haversine(lon1, lat1, lon2, lat2, radians = False):
     c = 2 * asin(sqrt(a)) 
     r = 6371*1000 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
     return c * r
+
+def centroid(geo_data_file : str, ids : int) -> tuple:
+    try:
+        gdf = gpd.read_file(geo_data_file)
+    except Exception as e:
+        errors.write_error(sys.argv[0], e, 
+                                "error", datetime.now())
+        raise e
+
+    gdf = gdf.loc[gdf[con.ID].isin(ids)]
+    gdf["cenotroids"] = gdf[con.GEOMETRY].centroid
+
+    return gdf["cenotroids"].tolist()

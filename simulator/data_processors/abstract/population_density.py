@@ -17,6 +17,8 @@ class PopulationDensity(abc.ABC):
     crisis_datetime : datetime
         datetime of crisis. Everythin before this will be considered
         baseline
+    dataset_id : str
+        unique identifier for the data source. 
     baseline : pd.DataFrame   
         baseline dataset to calculare z-scores from
             Structure:
@@ -52,6 +54,13 @@ class PopulationDensity(abc.ABC):
     
     @abc.abstractproperty
     def baseline(self) -> pd.DataFrame:
+        '''
+        baseline dataset to calculare z-scores from
+        '''
+        return NotImplemented
+    
+    @abc.abstractproperty
+    def dataset_id(self) -> str:
         '''
         baseline dataset to calculare z-scores from
         '''

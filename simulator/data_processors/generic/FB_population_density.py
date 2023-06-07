@@ -9,15 +9,13 @@ import simulator.utils as utils
 import simulator.constants as con
 from simulator.data_processors.abstract.population_density import PopulationDensity
 
-
-
 class FBPopulationDensity(PopulationDensity):
     """
     Class for constructing a population density dataset with the same
     structure as the ones porduced by fb.
     """
 
-    def __init__(self, data_dir : str, crisis_datetime : datetime,
+    def __init__(self, dataset_id : str, data_dir : str, crisis_datetime : datetime,
                   agg_geometry : str):
         '''
         Constructor method
@@ -29,6 +27,7 @@ class FBPopulationDensity(PopulationDensity):
         '''
 
         self.__data_dir = data_dir
+        self.__dataset_id = f"fb_population_density_{dataset_id}"
         self.__crisis_datetime = crisis_datetime
         self.__baseline = pd.DataFrame()
         self.__crisis = pd.DataFrame()
@@ -38,6 +37,7 @@ class FBPopulationDensity(PopulationDensity):
         self.__agg_geometry = agg_geometry
         if self.agg_geometry() == 'admin':
             self.__geo_col_name = 'admin'
+            return NotImplemented
         elif self.agg_geometry() == 'tile':
             self.__geo_col_name = con.QUAD_KEY
         else:
@@ -60,6 +60,9 @@ class FBPopulationDensity(PopulationDensity):
             self.load_data()
 
         return self.__baseline
+    
+    def dataset_id(self) -> str:
+        return self.__dataset_id
     
     # Methods
     # -------
@@ -89,12 +92,17 @@ class FBPopulationDensity(PopulationDensity):
         df[con.N_DIFFERENCE] = df[con.N_CRISIS] - df[con.N_BASELINE]
         df[con.DENSITY_BASELINE] = df[con.N_BASELINE] / df[con.N_BASELINE].sum()
         df[con.DENSITY_CRISIS] = df[con.N_CRISIS] / df[con.N_CRISIS].sum()
-        df[con.PERCENT_CHANGE] = "percent_change"
+        df[con.PERCENT_CHANGE] = (df[con.N_CRISIS] - df[con.N_BASELINE]) * 100 / (df[con.N_BASELINE] + con.EPSILON)
         df[con.Z_SCORE] = "z_score"
-        df[con.DS] = "ds"
+        df[con.DS] = df[con.DATETIME].dt.date
 
+        # Calclate the lat and lon of the geometry centroid
+        if self.agg_geometry() == 'admin':
+            return NotImplemented
+        elif self.agg_geometry() == 'tile':
+            df[con.LATITUDE], df[con.LONGITUDE] = utils.facebook.tile_centroid(df[self.__geo_col_name])
 
-
+        self.__data = df
 
     def load_from_file(self):
         """
@@ -110,6 +118,9 @@ class FBPopulationDensity(PopulationDensity):
         for file in os.listdir(self.data_dir()):
             try:
                 df_tmp = pd.read_csv(file, parse_dates=[con.DATETIME])
+                df_tmp.rename(columns={con.DATETIME: con.DATE_TIME,
+                                       con.LAT: con.LATITUDE, 
+                                       con.LON: con.LONGITUDE}, inplace=True)
 
                 # Check minimun required columns
                 if not set(df_tmp.columns).issubset(con.DATASET_MIN_COLS):
@@ -155,11 +166,11 @@ class FBPopulationDensity(PopulationDensity):
         df_raw = self.load_from_file()
 
         # brings data to fb datetime intervals
-        df_raw[con.DATETIME] = df_raw[con.DATETIME].apply(utils.facebook.to_fb_date())
+        df_raw[con.DATE_TIME] = df_raw[con.DATE_TIME].apply(utils.facebook.to_fb_date())
 
         # extract date of week for comparison
-        df_raw[con.DAY_OF_WEEK] = df_raw[con.DATETIME].weekday()
-        df_raw[con.HOUR] = df_raw[con.DATETIME].hour
+        df_raw[con.DAY_OF_WEEK] = df_raw[con.DATE_TIME].weekday()
+        df_raw[con.HOUR] = df_raw[con.DATE_TIME].hour
 
         # builds ids
         if self.agg_geometry() == 'admin':
@@ -170,25 +181,50 @@ class FBPopulationDensity(PopulationDensity):
             df_raw[self.__geo_col_name] = tile_ids.tolist()
 
         # If the same person appeared at multiple locations in a time interval we only count their most frequent location.
-        df_raw.sort_values(con.DATETIME, inplace=True)
-        df_raw.drop_duplicates(subset=[self.__geo_col_name, con.DATETIME], 
+        df_raw.sort_values(con.DATE_TIME, inplace=True)
+        df_raw.drop_duplicates(subset=[self.__geo_col_name, con.DATE_TIME], 
                                 keep="last", inplace=True)
                 
         # build baseline
-        df_baseline_raw = df_raw[df_raw[con.DATETIME] < self.crisis_datetime()]
-        cols_to_drop = set(df_baseline_raw.columns) - set([self.__geo_col_name, con.DAY_OF_WEEK, con.HOUR])
+        df_baseline_raw = df_raw[df_raw[con.DATE_TIME] < self.crisis_datetime()]
+        cols_to_drop = set(df_baseline_raw.columns) - set([self.__geo_col_name, 
+                                                           con.DAY_OF_WEEK, con.HOUR])
 
         df_baseline_raw.drop(columns=cols_to_drop, inplace=True)
         df_baseline_raw[con.N_BASELINE] = 1
 
-        df_baseline = df_baseline_raw.groupby([self.__geo_col_name, con.DAY_OF_WEEK, con.HOUR])[con.N_BASELINE].mean().reset_index()
+        df_baseline = df_baseline_raw.groupby([self.__geo_col_name, 
+                                               con.DAY_OF_WEEK, con.HOUR])[con.N_BASELINE] \
+                                                .mean().reset_index()
         self.__baseline = df_baseline
 
         # build crisis
-        df_crisis_raw = df_raw[df_raw[con.DATETIME] >= self.crisis_datetime()]
-        cols_to_drop = set(df_crisis_raw.columns) - set([self.__geo_col_name, con.DAY_OF_WEEK, con.HOUR, con.DATETIME])
+        df_crisis_raw = df_raw[df_raw[con.DATE_TIME] >= self.crisis_datetime()]
+        cols_to_drop = set(df_crisis_raw.columns) - set([self.__geo_col_name, 
+                                                         con.DAY_OF_WEEK, con.HOUR, con.DATE_TIME])
 
         df_crisis_raw.drop(columns=cols_to_drop, inplace=True)
         df_crisis_raw[con.CRISIS] = 1
-        df_crisis = df_crisis_raw.groupby([self.__geo_col_name, con.DAY_OF_WEEK, con.HOUR, con.DATETIME])[con.CRISIS].mean().reset_index()
+        df_crisis = df_crisis_raw.groupby([self.__geo_col_name, con.DAY_OF_WEEK, 
+                                           con.HOUR, con.DATE_TIME])[con.CRISIS] \
+                                            .mean().reset_index()
         self.__crisis = df_crisis
+
+    def write_dataset_to_file(self):
+        out_folder = os.path.join(con.DATA_FOLDER, f"{self.dataset_id()}", 
+                            f"dataset=population-density", f"scale={self.__agg_geometry}")
+        
+        if not os.path.exists(out_folder):
+            os.mkdir(out_folder)
+
+        for date in self.__data[con.DS].unique():
+            for hour in [0, 8, 16]:
+                # file naming conventions
+                date_str = datetime.datetime.strftime(date, "%Y-%m-%d")
+                hour_str = f"0{hour}00" if hour // 10 == 0 else f"{hour}00"
+                file_name = f"{self.dataset_id()}_{date_str}_{hour_str}.csv"
+                out_file = os.path.join(out_folder, file_name)
+
+                df_tmp = self.__data.loc[self.__data[con.DS == date] & self.__data[con.HOUR == hour]]
+                df_tmp[con.DS] = date_str
+                df_tmp[con.FB_POP_DENSITY_COLS].to_csv(out_file, index=False)

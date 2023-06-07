@@ -45,7 +45,11 @@ DATETIME = "datetime"
 GEO_ID = "geo_id"
 HOUR = "hour"
 
+
 # fb specific column names
+LATITUDE = "latitude"
+LONGITUDE = "longitude"
+DATE_TIME = "date_time"
 DAY_OF_WEEK = "day_of_week"
 QUAD_KEY = "quadkey"
 N_BASELINE = "n_baseline"
@@ -56,9 +60,13 @@ DENSITY_CRISIS = "density_crisis"
 PERCENT_CHANGE = "percent_change"
 Z_SCORE = "z_score"
 DS = "ds"
+COUNTRY = "country"
 
 # Min columns for simulated dataset
 DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
+FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
+                        DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
 # City
 MIN_CITY_RADIUS_KM = 1.5
@@ -81,3 +89,4 @@ REPELLING_FORCE = "repelling_force"
 LEVEL_DETAIL = 14
 
 # fb data constants
+EPSILON = 1
