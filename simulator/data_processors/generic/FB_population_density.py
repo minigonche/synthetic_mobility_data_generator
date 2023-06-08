@@ -92,8 +92,8 @@ class FBPopulationDensity(PopulationDensity):
         df[con.N_DIFFERENCE] = df[con.N_CRISIS] - df[con.N_BASELINE]
         df[con.DENSITY_BASELINE] = df[con.N_BASELINE] / df[con.N_BASELINE].sum()
         df[con.DENSITY_CRISIS] = df[con.N_CRISIS] / df[con.N_CRISIS].sum()
-        df[con.PERCENT_CHANGE] = (df[con.N_CRISIS] - df[con.N_BASELINE]) * 100 / (df[con.N_BASELINE] + con.EPSILON)
-        df[con.Z_SCORE] = "z_score"
+        df[con.PERCENT_CHANGE] = df[con.N_DIFFERENCE] * 100 / (df[con.N_BASELINE] + con.EPSILON)
+        df[con.Z_SCORE] = df[con.N_DIFFERENCE] / df['n_baseline_std']
         df[con.DS] = df[con.DATETIME].dt.date
 
         # Calclate the lat and lon of the geometry centroid
@@ -194,8 +194,15 @@ class FBPopulationDensity(PopulationDensity):
         df_baseline_raw[con.N_BASELINE] = 1
 
         df_baseline = df_baseline_raw.groupby([self.__geo_col_name, 
-                                               con.DAY_OF_WEEK, con.HOUR])[con.N_BASELINE] \
-                                                .mean().reset_index()
+                                               con.DAY_OF_WEEK, con.HOUR], as_index=False) \
+                                                .agg({con.N_BASELINE:['mean','std']})
+        
+        df_baseline.columns = [self.__geo_col_name, con.DAY_OF_WEEK, 
+                               con.HOUR, con.N_BASELINE, 'n_baseline_std']
+        
+        # make sure std is at least 0.1
+        df_baseline.loc[df_baseline['n_baseline_std'] < con.MIN_STD,'n_baseline_std' ] =  con.MIN_STD
+
         self.__baseline = df_baseline
 
         # build crisis

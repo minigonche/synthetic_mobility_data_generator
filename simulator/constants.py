@@ -119,6 +119,7 @@ LEVEL_DETAIL = 14
 FINAL_FORCE = "final_force"
 REACH_PROBABILITY = "reach_probability"
 EPSILON = 1
+MIN_STD = 0.1
 
 # Node Positions
 START_NODE = "start_node"
