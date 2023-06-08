@@ -41,6 +41,7 @@ GEOMETRY = "geometry"
 LAT = "lat"
 LON = "lon"
 VALUE = "value"
+NODE_ID = "node_id"
 NODE_ID1 = "node_id1"
 NODE_ID2 = "node_id2"
 DISTANCE = "distance"
@@ -84,7 +85,7 @@ LON_Y = "lon_y"
 
 
 # Noise
-CITY_NOISE =  0.009 # 1000m in the equator
+CITY_NOISE =  0.0045 # 500m in the equator
 ROAD_NOISE = 0.0018 # 200m in the equator
 
 
@@ -92,7 +93,7 @@ ROAD_NOISE = 0.0018 # 200m in the equator
 MIN_CITY_RADIUS_KM = 1.5
 MIN_BUILDING_RADIUS_KM = 0.5
 MIN_POPULATION = 500
-MAX_DISTANCE_BETWEEN_ADJACENT_CITIES_KM = 45
+MAX_DISTANCE_BETWEEN_ADJACENT_CITIES_KM = 8
 
 # Roads
 ROADS_WIDTH_KM = 0.35

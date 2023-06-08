@@ -38,14 +38,15 @@ class NormalDisasterFun(DisasterFunction):
         self.__variance = variance
         self.__amplitude = amplitude
         
-
+    @property
     def mean(self) -> np.array:
         return self.__mean
-    
+
+    @property  
     def variance(self) -> np.array:
         return self.__variance
     
-    
+    @property    
     def amplitude(self) -> float:
         return self.__amplitude
 
@@ -89,7 +90,7 @@ class NormalDisasterFun(DisasterFunction):
         Parameters
         ----------
         pois : np.array
-            list of geometries (pois of interes) to calculate forces exerted.
+            list of points in the format (lon, lat) to calculate forces exerted.
 
         Returns
         -------
@@ -97,7 +98,7 @@ class NormalDisasterFun(DisasterFunction):
             array of angles describing the bearing at a given point in degrees
 
         """
-        pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
+        pois_coord = [(p[1], p[0]) for p in pois] # invert to match (lat, lon)
         pois_coord = np.asarray(pois_coord)
 
         bearings = self.__bearing(np.transpose(pois_coord))
@@ -111,7 +112,7 @@ class NormalDisasterFun(DisasterFunction):
         Parameters
         ----------
         pois : np.array
-            list of geometries (pois of interes) to calculate forces exerted.
+            list of points in the format (lon, lat)  to calculate forces exerted.
 
         Returns
         -------
@@ -119,7 +120,7 @@ class NormalDisasterFun(DisasterFunction):
             array of floats that describe the intensity of the disaster at a specific point.
 
         """
-        pois_coord = [(p.y, p.x) for p in pois] # invert to match (lat, lon)
+        pois_coord = [(p[1], p[0]) for p in pois] # invert to match (lat, lon)
         pois_coord = np.asarray(pois_coord)
 
         intensity = self.__density(np.transpose(pois_coord))

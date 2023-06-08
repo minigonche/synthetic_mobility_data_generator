@@ -27,18 +27,21 @@ class DisasterFunction(abc.ABC):
     
     """
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def mean(self) -> np.array:
-        return self.mean
+        return NotImplemented
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def variance(self) -> np.array:
-        return self.variance
+        return NotImplemented
     
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def amplitude(self) -> float:
-        return self.amplitude
+        return NotImplemented
     
     # Methods
     # -------
@@ -49,7 +52,7 @@ class DisasterFunction(abc.ABC):
         Parameters
         ----------
         pois : list
-            list of geometries (pois of interes) to calculate forces exerted.
+            list of points in the format (lon, lat)  to calculate forces exerted.
 
         Returns
         -------
@@ -66,14 +69,13 @@ class DisasterFunction(abc.ABC):
 
         Parameters
         ----------
-        pois :list
-            list of geometries (pois of interes) to calculate forces exerted.
+        pois : np.array
+            list of points in the format (lon, lat)  to calculate forces exerted.
 
         Returns
         -------
-       list
+        np.array
             array of floats that describe the intensity of the disaster at a specific point.
-
         """
 
         return NotImplemented
