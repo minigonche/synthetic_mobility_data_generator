@@ -13,9 +13,9 @@ from simulator.data_processors.abstract.data_processor import DataProcessor
 
 TAB = "  "
 
-class FBPopulationDensity(DataProcessor):
+class FBMobility(DataProcessor):
     """
-    Class for constructing a population density dataset with the same
+    Class for constructing a mobility dataset with the same
     structure as the ones porduced by fb.
     """
 
@@ -52,7 +52,9 @@ class FBPopulationDensity(DataProcessor):
         else:
             self.__geo_col_name = "not_defined"
 
-        baseline_cols.append(self.__geo_col_name)
+        baseline_cols = baseline_cols + [f"start_{self.__geo_col_name}"] \
+              + [f"end_{self.__geo_col_name}"]
+
         self.__baseline_cols = baseline_cols
 
 
@@ -100,15 +102,19 @@ class FBPopulationDensity(DataProcessor):
     
     def build_dataset(self):
         """
-        Builds population density dataset
+        Builds mobility dataset
 
         df structure:
             Index:
                 RangeIndex
             Columns:
-                Name: latitude, dtype: float
-                Name: longitude, dtype: float
-                Name: quadkey, dtype: str  *or id if agg by administrative geometry
+                Name: start_latitude, dtype: float
+                Name: start_longitude, dtype: float
+                Name: end_latitude, dtype: float
+                Name: end_longitude, dtype: float
+                Name: length_km, dtype: float
+                Name: start_quadkey, dtype: str  *or start_id if agg by administrative geometry
+                Name: end_quadkey, dtype: str  *or end_id if agg by administrative geometry
                 Name: date_time, dtype: datetime
                 Name: n_baseline, dtype: float64
                 Name: n_crisis, dtype: float64
@@ -116,9 +122,10 @@ class FBPopulationDensity(DataProcessor):
                 Name: percent_change, dtype: float64
                 Name: z_score, dtype: float64
                 Name: ds, dtype: date
+
         """
 
-        print("Calulates fb population density statistics.")
+        print("Calulates fb mobility statistics.")
         if not self.__crisis_loaded or not self.__baseline_loaded:
             self.load_data()
            
@@ -136,20 +143,18 @@ class FBPopulationDensity(DataProcessor):
 
         # Merge left will remove entries that dont' have a baseline. This is NOT IDEAL
         # but it is currenlty how Data for Good handles it.
-        merge_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+        merge_cols = [con.START_LATITUDE, con.START_LONGITUDE, con.END_LATITUDE, con.END_LONGITUDE] + self.__baseline_cols
         df = self.baseline().merge(self.crisis(), 
                     on=merge_cols, how="inner")
 
         df[con.N_DIFFERENCE] = df[con.N_CRISIS] - df[con.N_BASELINE]
-        df[con.DENSITY_BASELINE] = df[con.N_BASELINE] / df[con.N_BASELINE].sum()
-        df[con.DENSITY_CRISIS] = df[con.N_CRISIS] / df[con.N_CRISIS].sum()
         df[con.PERCENT_CHANGE] = df[con.N_DIFFERENCE] * 100 / (df[con.N_BASELINE] + con.EPSILON)
         df[con.Z_SCORE] = df[con.N_DIFFERENCE] / df['n_baseline_std']
         df[con.DS] = df[con.DATE_TIME].dt.date
-        
-        self.__data = df
-        print("All Done.")
 
+        self.__data = df
+
+        print("All Done.")
 
     def load_data(self):
         """
@@ -212,24 +217,52 @@ class FBPopulationDensity(DataProcessor):
         df_raw.drop_duplicates(subset=[con.ID, con.DATE_TIME], 
                                 keep="last", inplace=True)
         
-        # agregates
-        group_by_cols = [con.LATITUDE, con.LONGITUDE, con.DATE_TIME] + self.__baseline_cols
-        df_raw["count"] = 1
-        df = df_raw.groupby(group_by_cols)["count"].sum().reset_index()
-                
+        # loop over date intervals
+        dates = df_raw[con.DATE_TIME].unique() 
+        start = dates[0]
+        df_mov = pd.DataFrame()
+        for idx, i in enumerate(dates):
+            
+            if idx == len(dates) - 1:
+                break
+            start = dates[idx]
+            end = dates[idx + 1]
+            # creates start and end dataframes
+            df_start = df_raw[df_raw[con.DATE_TIME] == start].copy()
+            df_start.rename(columns={con.LATITUDE : con.START_LATITUDE, 
+                                        con.LONGITUDE : con.START_LONGITUDE,
+                                        con.QUAD_KEY : con.START_QUADKEY}, inplace=True)
+            df_end = df_raw[df_raw[con.DATE_TIME] == end].copy()
+            df_end.rename(columns={con.LATITUDE : con.END_LATITUDE, 
+                            con.LONGITUDE : con.END_LONGITUDE, con.QUAD_KEY : con.END_QUADKEY}, inplace=True)
+
+            cols_drop = list(set(df_end.columns) - set([con.ID, con.END_LATITUDE, 
+                                                con.END_LONGITUDE, con.END_QUADKEY]))
+            df_end.drop(columns=cols_drop, inplace=True)
+
+            # joins by device id
+            merge_cols = [con.ID]
+            df_tmp = df_start.merge(df_end, on=merge_cols, how='inner')
+            df_tmp["count"] = 1
+            groupby_cols = [con.START_QUADKEY, con.END_QUADKEY, con.DATE_TIME, con.START_LATITUDE, 
+                            con.START_LONGITUDE, con.END_LATITUDE, 
+                            con.END_LONGITUDE, con.DAY_OF_WEEK, con.HOUR]
+            df_mov_tmp = df_tmp.groupby(groupby_cols)["count"].sum().reset_index()
+            
+            df_mov = pd.concat([df_mov, df_mov_tmp])
+
         # build baseline
         print(f"{TAB}{TAB}Builds baseline.")
-        df_baseline_raw = df[df[con.DATE_TIME] < self.crisis_datetime()]
+        df_baseline_raw = df_mov[df_mov[con.DATE_TIME] < self.crisis_datetime()]
         if df_baseline_raw.empty:
             error_fun.write_error(sys.argv[0], f"No data found before disaster date. Can't build baseline.", 
                                 "warning", datetime.datetime.now())
         else:
-            group_by_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+            group_by_cols = [con.START_LATITUDE, con.START_LONGITUDE, 
+                 con.END_LATITUDE, con.END_LONGITUDE] + self.__baseline_cols 
             df_baseline = df_baseline_raw.groupby(group_by_cols, as_index=False) \
                                                     .agg({"count": ['mean','std']})
-            
-            # df_baseline.rename(columns={"count" : con.N_BASELINE}, inplace=True)
-            
+                        
             baseline_cols = group_by_cols + [con.N_BASELINE, 'n_baseline_std']
             df_baseline.columns = baseline_cols
             
@@ -243,7 +276,7 @@ class FBPopulationDensity(DataProcessor):
 
         # build crisis
         print(f"{TAB}{TAB}Builds crisis.")
-        df_crisis = df[df[con.DATE_TIME] >= self.crisis_datetime()]
+        df_crisis = df_mov[df_mov[con.DATE_TIME] >= self.crisis_datetime()]
         if df_crisis.empty:
             error_fun.write_error(sys.argv[0], f"No data found after disaster date. Can't build crisis.", 
                                 "warning", datetime.datetime.now())
@@ -254,13 +287,12 @@ class FBPopulationDensity(DataProcessor):
             self.__crisis = df_crisis
 
         self.__crisis_loaded = True
-        print(f"{TAB}{TAB}Done.")
- 
+        print(f"{TAB}{TAB}Done.") 
         
 
     def write_dataset_to_file(self):
         out_folder = os.path.join(self.__out_dir, f"{self.dataset_id()}", 
-                            f"dataset=population-density", f"scale={self.__agg_geometry}")
+                            f"dataset=mobility", f"scale={self.__agg_geometry}")
         
         if not os.path.exists(out_folder):
             os.mkdir(out_folder)
@@ -276,6 +308,6 @@ class FBPopulationDensity(DataProcessor):
                 df_tmp = self.__data.loc[(self.__data[con.DS] == date) & (self.__data[con.HOUR] == hour)]
                 df_tmp[con.DS] = date_str
                 if self.__agg_geometry == "tile":
-                    df_tmp[con.FB_TILE_POP_DENSITY_COLS].to_csv(out_file, index=False)
+                    df_tmp[con.FB_TILE_MOBILITY_COLS].to_csv(out_file, index=False)
                 elif self.__agg_geometry == "admin":
-                    df_tmp[con.FB_ADMIN_POP_DENSITY_COLS].to_csv(out_file, index=False)
+                    df_tmp[con.FB_ADMIN_MOBILITY_COLS].to_csv(out_file, index=False)

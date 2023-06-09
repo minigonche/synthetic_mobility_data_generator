@@ -63,6 +63,7 @@ LONGITUDE = "longitude"
 DATE_TIME = "date_time"
 DAY_OF_WEEK = "day_of_week"
 QUAD_KEY = "quadkey"
+ADMIN_KEY = "admin_id"
 N_BASELINE = "n_baseline"
 N_CRISIS = "n_crisis"
 N_DIFFERENCE = "n_difference"
@@ -72,6 +73,14 @@ PERCENT_CHANGE = "percent_change"
 Z_SCORE = "z_score"
 DS = "ds"
 COUNTRY = "country"
+START_LATITUDE = "start_latitude"
+START_LONGITUDE = "start_longitude"
+END_LATITUDE = "end_latitude"
+END_LONGITUDE = "end_longitude"
+START_QUADKEY = "start_quadkey"
+END_QUADKEY = "end_quadkey"
+START_ADMIN_KEY = "start_admin_id"
+END_ADMIN_KEY = "end_admin_id"
 
 # Min columns for simulated dataset
 DATASET_MIN_COLS = [ID, LAT, LON, DATE]
@@ -83,6 +92,13 @@ FB_ADMIN_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, ID,
                         DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
                         DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
+FB_TILE_MOBILITY_COLS = [START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE, START_QUADKEY, 
+                        END_QUADKEY, DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        PERCENT_CHANGE, Z_SCORE, DS]
+
+FB_ADMIN_MOBILITY_COLS = [START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE, START_ADMIN_KEY, 
+                        END_ADMIN_KEY, DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        PERCENT_CHANGE, Z_SCORE, DS]
 
 # Noise
 CITY_NOISE =  0.0045 # 500m in the equator
