@@ -12,9 +12,13 @@ class Earthquake(Disaster):
     """
 
     def __init__(self, id : str, 
-                 epicenter : tuple, start_date : datetime, 
-                 disaster_functions : list = [],
-                 disaster_timeline : list = []):
+                 epicenter : tuple, 
+                 start_date : datetime,
+                 end_date : datetime,
+                 A0 : int, 
+                 vxy : tuple, 
+                 method : str, 
+                 step_unit : str = 'hr'):
         '''
         Constructor method
 
@@ -26,6 +30,17 @@ class Earthquake(Disaster):
             lat, lon of the epicenter
         start_date : datetime
             start datetime of the disaster
+        end_date : datetime
+            end datetime of the disaster
+        A0 : int
+            Initial amplitude. The multiplier to the intensity when at the epicenter (i.e 
+            x = mean_x and y = mean_y)
+        vxy : tuple
+            values for variance (var_x, var_y)
+        method : str
+            method of decrease of amplitude. one of 'linear', 'exponential', 'parabolic'
+        step_unit : str
+            time unit for the step. One of 'hr' or 'day'        
         disaster_functions : list
             a list of DisasterDistribution, where each element represents a moment in time.
         disaster_timeline : list
@@ -36,24 +51,44 @@ class Earthquake(Disaster):
 
         self.__id = id
         self.__start_date = start_date
+        self.__end_date = end_date
         self.__epicenter = np.asarray(epicenter)
-        self.__disaster_functions = disaster_functions
-        self.__disaster_timeline = disaster_timeline
-        
+        self.__disaster_functions = None
+        self.__disaster_timeline = None
 
+        # Diaster construction Variables
+        self.__A0 = A0 
+        self.__vxy = vxy
+        self.__method = method
+        self.__step_unit = step_unit
+        
+    @property
     def id(self) -> str:
         return self.__id
     
+    @property
     def start_date(self) -> datetime:
-
         return self.__start_date
     
+    @property
+    def end_date(self) -> datetime:
+        return self.__end_date        
+    
+    @property
     def disaster_functions(self) -> list:
+        if self.__disaster_functions is None:
+            self.generate_disaster()
+
         return self.__disaster_functions
     
+    @property
     def disaster_timeline(self) -> list:
+        if self.__disaster_timeline is None:
+            self.generate_disaster()
+
         return self.__disaster_timeline
     
+    @property
     def epicenter(self) -> tuple:
         return self.__epicenter
 
@@ -72,38 +107,38 @@ class Earthquake(Disaster):
         """
         return NotImplemented
 
-    def generate_disaster(self, A0 : int, vxy : tuple, 
-                          steps : int, method : str, step_unit : str = 'hr'):
+    def generate_disaster(self):
         """
         Method to automatically create a disaster. Should set the values of
-        disaster_functions and disaster_timeline accordinly.
+        disaster_functions and disaster_timeline accordingly.
 
-        The earhwuake is concieved as a progression of normal disaster distributions.
-        This function needs to vary the amplitude accross time. 
+        The earthquake is conceived as a progression of normal disaster distributions.
+        This function needs to vary the amplitude across time. 
 
         In this case we will model a decrease of amplitude and no change of variance.
 
-        Parameters
-        ----------
-        A0 : int
-            Initial amplitude. The multiplier to the intensity when at the epicenter (i.e 
-            x = mean_x and y = mean_y)
-        vxy : tuple
-            values for variance (var_x, var_y)
-        steps : int
-            number of steps till the "end" of the disaster. This will dictate len(disaster_timeline)
-        method : str
-            method of decrease of amplitude. one of 'linear', 'exponential', 'parabolic'
-        step_unit : str
-            time unit for the step. One of 'hr' or 'day'
-
         """
+
+        print("   Generating Disaster")
+
+        # Extracts Variables
+        method = self.__method
+        step_unit = self.__step_unit
+        A0 = self.__A0
+        vxy = self.__vxy
+
+        # Checks
         assert method in ['linear', 'exponential', 'parabolic']
         assert step_unit in ['hr', 'day']
 
-
-        time_step = datetime.timedelta(days = 1) if step_unit == 'day' else datetime.timedelta(hours = 1)
         vxy = np.asarray(vxy)
+
+        # Computes steps
+        time_step = datetime.timedelta(days = 1) if step_unit == 'day' else datetime.timedelta(hours = 1)
+        steps = (self.__end_date - self.__start_date).total_seconds()
+        steps = int(np.round(steps/time_step.total_seconds())) # Divides by unit    
+
+        print(f"      Number of steps to compute: {steps} {step_unit}")    
 
         # init
         A = A0  

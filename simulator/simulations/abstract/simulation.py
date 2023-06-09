@@ -1,8 +1,13 @@
 import numpy as np
 from abc import ABC
 import geopandas as gpd
+import os
 
-from population_networks.abstract.population_network import PopulationNetwork
+from simulator.population_networks.abstract.population_network import PopulationNetwork
+from simulator.disasters.abstract.disaster import Disaster
+import simulator.constants as con
+
+from datetime import datetime 
 
 class Simulation(ABC):
     """
@@ -11,30 +16,20 @@ class Simulation(ABC):
 
     Attributes
     ----------
-    state : int
-        number of iterations
+    id : str
+        Id of the simulation
     start_date : datetime
         start date of the simulation
     end_date : datetime
         end date of the simulation
-    event_timeline : np.array
-        array of disaster distributions. It is directly extracted from the Disaster object, but it must start
-        at the given start_date and end at the given end_date. Missing values represent that at that given step
-        of the simulation there is no disaster. 
-    population_network_0 : PopulationNetwork
-        PopulationNetwork for the simmulation at moment iter - 1. For the first iteration, it is the initial 
-        PopulationNetwork.
-    population_network_1 : PopulationNetwork
-        PopulationNetwork for the simmulation for current iteration.
-    simulated_data : geopandas.GeoDataFrame
-        GeoDataFrame with the simulated data.
-        Index:
-            RangeIndex
-        Columns:
-            Name: date, dtype: datetime64[ns]
-            Name: Geometry, dtype: geometry
-            Name: count, dtype: int64
-            Name: accuracy, dtype: float64 (optional)
+    frequency : float
+        The frequency the simulation will act in hours
+    disaster : Disaster
+        The disaster that will act no the simulation
+    population_network : PopulationNetwork
+        PopulationNetwork for the simulation.
+
+
 
     Methods
     -------
@@ -46,14 +41,19 @@ class Simulation(ABC):
     
     """
 
-    def __init__(self, id : str, event_timeline : np.array,
-                  population_network_0 : PopulationNetwork, simulated_data : gpd.GeoDataFrame):
+    def __init__(self, id : str,
+                       start_date : datetime,
+                       end_date : datetime,
+                       frequency : float,
+                       disaster : Disaster,
+                       population_network : PopulationNetwork):
         
         self.id = id
-        self.event_timeline = event_timeline
-        self.population_network_0 = population_network_0
-        self.population_network_1 = None
-        self.simulated_data = gpd.GeoDataFrame()
+        self.start_date = start_date
+        self.end_date = end_date
+        self.frequency = frequency 
+        self.disaster = disaster
+        self.population_network = population_network
 
     
     def simulate(self):
@@ -78,4 +78,23 @@ class Simulation(ABC):
         """
 
         return NotImplemented
+
+    def export_iteration(self, date_string, df):
+        '''
+        Method that exports to disk the given iteration DataFame for the corresponding date
+        '''
+
+        export_folder = os.path.join(con.RESULTS_FOLDER, self.id)
+        if not os.path.exists(export_folder):
+            # Create the folder
+            os.makedirs(export_folder)
+
+        # Creates Filename   
+        filename = f"{os.path.join(export_folder,date_string)}.csv"
+        
+        # Saves
+        df[[con.ID, con.DATE, con.LON, con.LAT]].to_csv(filename, index = False)
+     
+
+
     

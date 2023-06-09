@@ -6,6 +6,8 @@ import datetime
 # Local imports
 from simulator.disasters.abstract.disaster_function import DisasterFunction
 
+from simulator.utils import general as gen_fun 
+
 class Disaster(abc.ABC):
     """
     A class used to represent an disaster. In its most basic it 
@@ -46,14 +48,16 @@ class Disaster(abc.ABC):
 
     # Attributes
     # ----------
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def id(self) -> str:
         '''
         Id of the disaster
         '''
         return NotImplemented
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def epicenter(self) -> tuple:
         '''
         latitude and longited of the epicenter 
@@ -61,21 +65,32 @@ class Disaster(abc.ABC):
         '''
         return NotImplemented
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def start_date(self) -> datetime:
         '''
         Start date of the disaster
         '''
         return NotImplemented
+
+    @property
+    @abc.abstractmethod
+    def end_date(self) -> datetime:
+        '''
+        End date of the disaster
+        '''
+        return NotImplemented        
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def disaster_functions(self) -> list:
         '''
         A list of DisasterFunction, where each element represents a moment in time
         '''
         return NotImplemented
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def disaster_timeline(self) -> list:
         '''
         A list of dates corresponding to the "snapshots" of the disaster. This must 
@@ -85,6 +100,29 @@ class Disaster(abc.ABC):
     
     # Methods
     # -------
+    def get_function_by_date(self, date: datetime):
+        '''
+        Gets the closest function, before or at, the given date 
+        Parameters
+        ----------
+        date : datetime
+            The value to search
+
+        Return
+        ------
+        function
+            The function or None in case the array is empty or the date is before the event
+        '''
+        
+
+        ind = gen_fun.binary_search(date, self.disaster_timeline)
+
+        if ind < 0:
+            return None
+
+        return(self.disaster_functions[ind])
+
+
     def is_valid(self):
         """
         Checks the following assumptions:
@@ -98,12 +136,12 @@ class Disaster(abc.ABC):
 
         """
         message = 'OK'
-        if len(self.disaster_functions()) != len(self.disaster_timeline()):
-            return (False, f"disaster_functions length {len(self.disaster_functions())} \
-            does not match disaster_timeline lenght {len(self.disaster_timeline())}.")
-        if len(set(self.disaster_timeline())) != len(self.disaster_timeline()):
+        if len(self.disaster_functions) != len(self.disaster_timeline):
+            return (False, f"disaster_functions length {len(self.disaster_functions)} \
+            does not match disaster_timeline lenght {len(self.disaster_timeline)}.")
+        if len(set(self.disaster_timeline())) != len(self.disaster_timeline):
             return (False, f"disaster_timeline has repeated dates.")
-        if len(self.disaster_functions()) == 0:
+        if len(self.disaster_functions) == 0:
             message = warnings.warn("Disaster is empty. Run generate_disaster() or initialize manually", warnings.UserWarning)
      
         return (True, message)

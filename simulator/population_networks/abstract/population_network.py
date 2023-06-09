@@ -85,15 +85,15 @@ class PopulationNetwork(abc.ABC):
     # ------- 
     def update_flow(self, force : np.array):
         """
-        Given an array of forces excerted on the nodes of the network, the network updates
+        Given an array of forces exerted on the nodes of the network, the network updates
         itself to account for the given force.
 
         Parameters
         ----------
         force : np.array
-            an array of 2D force vectors as returned by the point_force method of 
-            a DsasterDistribution.
+            an array of float intensities as returned by the DisasterDistribution.
         """
+        
         return NotImplemented
 
     def sample_from_node(self, node_id : str, num_points : int = 1):
@@ -136,36 +136,60 @@ class PopulationNetwork(abc.ABC):
                         con.LAT : np.apply_along_axis(lambda p: p.y, 0, arr)})   
 
 
-    def sample(self, state_0 : gpd.GeoDataFrame = gpd.GeoDataFrame(), 
-               accuracy : bool = False) -> gpd.GeoDataFrame:
+    def sample(self, 
+              current_state : pd.DataFrame,
+              target_nodes : np.array,
+              accuracy : bool = False) -> pd.DataFrame:
         """
-        The main method for the mobility simulation. Returns a mobility dataset for the 
-        given network. It must contain at least a geometry (i.e. Point, Polygon), a 
-        device count, and a datetime. Optionally returns accuracy.
-
-        The sampling should be mediated by 
-            1. Node locations
-            2. Population per node
-            3. Distribution of population
-            4. Connectivity
+        The main method for the mobility simulation. Returns the next position of the given devices in the current
+        state, according to the target_nodes
 
         Parameters
         ----------
-        state_0 : gpd.GeoDataFrame
-            previous sample to ensure continuity. If empty, generates a randome one. 
+        current_state : pd.DataFrame
+            Previous sample to ensure continuity. 
+        target_nodes : np.array
+            Array with the ids of the nodes that the devices are headed
         accuracy : bool
             indicates if accuracy must be simulated.
 
         Returns
         ----------
-        geopandas.GeoDataFrame 
-            Index:
-                RangeIndex
+        pd.DataFrame             
             Columns:
-                Name: date, dtype: datetime64[ns]
-                Name: Geometry, dtype: geometry
-                Name: count, dtype: int64
-                Name: accuracy, dtype: float64 (optional)
+                Name: id, dtype: int64. Device Id
+                Name: date, dtype: datetime64[ns]. Date of the sample
+                Name: node_id, dtype: str. Nearest Node in the population to the device
+                Name: lon, dtype: float. Longitude of the device.
+                Name: lat, dtype: float. Latitude of the device 
+                Name: accuracy, dtype: float64 (optional). Accuracy of the sample
+
+        """
+
+        return NotImplemented
+
+
+    def initial_sample(self, 
+                        ids : np.array) -> pd.DataFrame:
+        """
+        Generates the position for the given device ids
+
+        Parameters
+        ----------
+        ids : np.array
+            ids of the devices to be sampled
+        accuracy : bool
+            indicates if accuracy must be simulated.
+
+        Returns
+        ----------
+        pd.DataFrame             
+            Columns:
+                Name: id, dtype: int64. Device Id
+                Name: node_id, dtype: str. Nearest Node in the population to the device
+                Name: lon, dtype: float. Longitude of the device.
+                Name: lat, dtype: float. Latitude of the device 
+                Name: accuracy, dtype: float64 (optional). Accuracy of the sample
 
         """
 
