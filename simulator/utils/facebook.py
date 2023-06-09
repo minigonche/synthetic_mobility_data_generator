@@ -5,7 +5,7 @@ import geopandas as gpd
 
 # Local imports
 import simulator.constants as con
-import datetime_functions as dt_fun
+from . import datetime_functions as dt_fun
 
 
 def extract_quad_keys(pois : tuple) -> list:
@@ -34,17 +34,33 @@ def extract_quad_keys(pois : tuple) -> list:
     longitude = pois[1]
     sinLatitude = np.sin(latitude * np.pi/180)
 
-    # Caculate coordinates of point with respect to tile coord system.
-    pixelX = ((longitude + 180) / 360) * 256 * np.power(2, con.LEVEL_DETAIL)
-    pixelY = (0.5 - np.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * np.pi)) * 256 * np.power(2, con.LEVEL_DETAIL)
+    # map size
+    mapsize = np.power(2, con.LEVEL_DETAIL)
 
-    # Calculate 
+    # Caculate coordinates of point with respect to tile coord system.
+    pixelX = ((longitude + 180) / 360) *  256 * np.power(2, con.LEVEL_DETAIL)
+    pixelY = (0.5 - np.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * np.pi)) *  256 * np.power(2, con.LEVEL_DETAIL)
+
+    # Calculate the tile XY coordinates
     tileX = np.floor(pixelX / 256).astype('int')
     tileY = np.floor(pixelY / 256).astype('int')
     
     quadkey = np.asarray([tileXY_to_quadkey(pX, pY, con.LEVEL_DETAIL) for pX, pY in zip(tileX, tileY)])
 
-    return quadkey
+    # Calculate coordinates
+    tilePixelX = tileX * 256
+    tilePixelY = tileY * 256
+    mapsize = 256 * np.power(2, con.LEVEL_DETAIL)
+    x = np.where(tilePixelX < 0, 0, np.where(tilePixelX > (mapsize - 1), (mapsize - 1), tilePixelX)) / mapsize
+    x = x - 0.5
+    y = np.where(tilePixelY < 0, 0, np.where(tilePixelY > (mapsize - 1), (mapsize - 1), tilePixelY)) / mapsize
+    y = 0.5 - y
+
+    latitude = 90 - 360 * np.arctan(np.exp(-y * 2 * np.pi)) / np.pi 
+    longitude = 360 * x
+
+
+    return latitude, longitude, quadkey
     
 
 def tileXY_to_quadkey(tileX : int, tileY : int, 
@@ -77,16 +93,19 @@ def tileXY_to_quadkey(tileX : int, tileY : int,
     quadkey_b = ''
     tileX_b = format(tileX, 'b')
     tileY_b = format(tileY, 'b')
+    # add leading zeroes to match lenght for interleaving
+    def trailing_zeroes(string, length):
+        final_string = string
+        for i in range(length - len(string)):
+            final_string = "0" + final_string
+        return final_string
+    
+    tileX_b = tileX_b if len(tileX_b) == level else trailing_zeroes(tileX_b, level)
+    tileY_b = tileY_b if len(tileY_b) == level else trailing_zeroes(tileY_b, level)
 
-    for i in range(level):
-        idx = i // 2
-        
-        if i % 2 == 0:  # even index
-            quadkey_b += tileY_b[idx]
-            quadkey_b += tileX_b[idx]
-        else: # odd index
-            quadkey_b += tileX_b[idx]
-            quadkey_b += tileY_b[idx]
+    for i in range(level):   
+        quadkey_b += tileY_b[i]
+        quadkey_b += tileX_b[i]
 
     # bring quadkey to base 4  
     quadkey = ''
@@ -112,7 +131,7 @@ def to_fb_date(t : datetime) -> datetime:
     datetime
         datetime in fb interval
     """
-    fb_date = t.replace(second=0, microsecond=0, minute=0, hour=t.hour)
+    fb_date = t.replace(second=0, microsecond=0, minute=0, hour=0)
     if t.hour >= 16 and t.hour < 24:
         fb_date = t.replace(second=0, microsecond=0, minute=0, hour=16)
     elif t.hour >= 0 and t.hour < 8:
@@ -121,21 +140,3 @@ def to_fb_date(t : datetime) -> datetime:
         fb_date = t.replace(second=0, microsecond=0, minute=0, hour=8)
 
     return fb_date
-
-def tile_centroid(quadkey : str) -> tuple:
-    """
-    Method to calculated the latitude and longitude of the centroid of a tile.
-
-    Parameters
-    ----------
-    quadkey : str
-        the quadkey corresponding to the tile. Can be a np.array
-    
-    Returns
-    -------
-    tuple 
-        (lat, lon) or array of tuples of the centroid of the tile.
-
-    """
-
-    return (0, 0)

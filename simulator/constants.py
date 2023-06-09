@@ -12,6 +12,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config.js
 # Global constants from config
 DATA_FOLDER = CONFIG['data_folder']
 CACHE_FOLDER = CONFIG["cache_folder"] 
+RESULTS_FOLDER = os.path.join(DATA_FOLDER, "results")
 ERRORS_FOLDER = CONFIG["errors_folder"]
 ERRORS_FILE = "errors.csv"
 
@@ -33,7 +34,6 @@ DEGREE_EQUIVALENT_IN_KM = 111.32
 
 SIMPLIFICATION_CONSTANTS_METERS = 500
 
-
 # Column Names
 POPULATION = "population"
 ID = "id"
@@ -47,6 +47,13 @@ DISTANCE = "distance"
 DATETIME = "datetime"
 GEO_ID = "geo_id"
 HOUR = "hour"
+POSITION = "position"
+DATE = "date"
+NOISE = "noise"
+LON_X = "lon_x"
+LAT_X = "lat_x"
+LAT_Y = "lat_y"
+LON_Y = "lon_y"
 
 
 # fb specific column names
@@ -66,21 +73,14 @@ DS = "ds"
 COUNTRY = "country"
 
 # Min columns for simulated dataset
-DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
-FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
+DATASET_MIN_COLS = [ID, LAT, LON, DATE]
+FB_TILE_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY,
                         DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
                         DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
-POSITION = "position"
-DATE = "date"
-NOISE = "noise"
-
-
-
-LON_X = "lon_x"
-LAT_X = "lat_x"
-LAT_Y = "lat_y"
-LON_Y = "lon_y"
+FB_ADMIN_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, ID,
+                        DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
 
 # Noise
@@ -123,3 +123,6 @@ MIN_STD = 0.1
 # Node Positions
 START_NODE = "start_node"
 END_NODE = "end_node"
+
+# Dateitme constants
+DEFAULT_DT_FORMAT = '%m-%d-%Y_%H:%M:%S'

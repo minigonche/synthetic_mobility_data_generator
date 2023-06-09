@@ -5,9 +5,12 @@ import datetime
 import pandas as pd
 import geopandas as gpd
 
-import simulator.utils as utils
+import simulator.utils.errors as error_fun
+import simulator.utils.facebook as fb_fun
 import simulator.constants as con
 from simulator.data_processors.abstract.population_density import PopulationDensity
+
+TAB = "  "
 
 class FBPopulationDensity(PopulationDensity):
     """
@@ -15,8 +18,9 @@ class FBPopulationDensity(PopulationDensity):
     structure as the ones porduced by fb.
     """
 
-    def __init__(self, dataset_id : str, data_dir : str, crisis_datetime : datetime,
-                  agg_geometry : str):
+    def __init__(self, disaster_name : str, data_dir : str, crisis_datetime : datetime,
+                  agg_geometry : str, out_dir : str, geo_file : str = None,
+                  baseline_cols : list = [con.HOUR, con.DAY_OF_WEEK]):
         '''
         Constructor method
 
@@ -27,21 +31,28 @@ class FBPopulationDensity(PopulationDensity):
         '''
 
         self.__data_dir = data_dir
-        self.__dataset_id = f"fb_population_density_{dataset_id}"
+        self.__out_dir = out_dir
+        self.__dataset_id = f"disaster-name={disaster_name}"
         self.__crisis_datetime = crisis_datetime
         self.__baseline = pd.DataFrame()
         self.__crisis = pd.DataFrame()
         self.__data = pd.DataFrame()
+        self.__baseline_loaded = False
+        self.__crisis_loaded = False
+        self.__geo_file = geo_file
 
         assert agg_geometry in ['tile', 'admin']
         self.__agg_geometry = agg_geometry
         if self.agg_geometry() == 'admin':
             self.__geo_col_name = 'admin'
-            return NotImplemented
+            assert self.__geo_file
         elif self.agg_geometry() == 'tile':
             self.__geo_col_name = con.QUAD_KEY
         else:
             self.__geo_col_name = "not_defined"
+
+        baseline_cols.append(self.__geo_col_name)
+        self.__baseline_cols = baseline_cols
 
 
     # Attributes
@@ -56,16 +67,35 @@ class FBPopulationDensity(PopulationDensity):
         return self.__agg_geometry
     
     def baseline(self) -> pd.DataFrame:
-        if self.__baseline.empty:
+        if not self.__baseline_loaded:
             self.load_data()
 
         return self.__baseline
+    
+    def crisis(self) -> pd.DataFrame:
+        if not self.__crisis_loaded:
+            self.load_data()
+            
+        return self.__crisis
+    
+    def data(self) -> pd.DataFrame:
+        if not self.__baseline_loaded or not self.__crisis_loaded:
+            self.load_data()
+        return self.__data
     
     def dataset_id(self) -> str:
         return self.__dataset_id
     
     # Methods
     # -------
+
+    def set_baseline(self, baseline : pd.DataFrame):
+        self.__baseline = baseline
+        self.__baseline_loaded = True
+
+    def set_crisis(self, crisis : pd.DataFrame):
+        self.__crisis = crisis
+        self.__crisis_loaded = True
     
     def build_dataset(self):
         """
@@ -81,28 +111,37 @@ class FBPopulationDensity(PopulationDensity):
                 Name: n_baseline, dtype: float64
         """
 
-        if self.__crisis.empty or self.__baseline.empty:
+        print("Calulates fb population density statistics.")
+        if not self.__crisis_loaded or not self.__baseline_loaded:
             self.load_data()
+           
+        if self.__crisis.empty :
+            error_fun.write_error(sys.argv[0], 
+                                    f"Can't calculate statistics without dataafter crisis date.", 
+                            "warning", datetime.datetime.now())
+            return 
+            
+        if self.__baseline.empty:
+            error_fun.write_error(sys.argv[0], 
+                                    f"Can't calculate statistics without baseline data.", 
+                            "warning", datetime.datetime.now())
+            return 
 
         # Merge left will remove entries that dont' have a baseline. This is NOT IDEAL
         # but it is currenlty how Data for Good handles it.
-        df = pd.merge([self.__crisis, self.__baseline], 
-                      on=[self.__geo_col_name, con.DAY_OF_WEEK, con.HOUR], how="left")
+        merge_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+        df = self.baseline().merge(self.crisis(), 
+                    on=merge_cols, how="inner")
 
         df[con.N_DIFFERENCE] = df[con.N_CRISIS] - df[con.N_BASELINE]
         df[con.DENSITY_BASELINE] = df[con.N_BASELINE] / df[con.N_BASELINE].sum()
         df[con.DENSITY_CRISIS] = df[con.N_CRISIS] / df[con.N_CRISIS].sum()
         df[con.PERCENT_CHANGE] = df[con.N_DIFFERENCE] * 100 / (df[con.N_BASELINE] + con.EPSILON)
         df[con.Z_SCORE] = df[con.N_DIFFERENCE] / df['n_baseline_std']
-        df[con.DS] = df[con.DATETIME].dt.date
-
-        # Calclate the lat and lon of the geometry centroid
-        if self.agg_geometry() == 'admin':
-            return NotImplemented
-        elif self.agg_geometry() == 'tile':
-            df[con.LATITUDE], df[con.LONGITUDE] = utils.facebook.tile_centroid(df[self.__geo_col_name])
-
+        df[con.DS] = df[con.DATE_TIME].dt.date
+        
         self.__data = df
+        print("All Done.")
 
     def load_from_file(self):
         """
@@ -114,29 +153,39 @@ class FBPopulationDensity(PopulationDensity):
             DataFrame with loaded ping data
         """
 
+
+        print(f"{TAB}Loads data from file.")
+
         df = pd.DataFrame()
+        date_parser = lambda x: datetime.datetime.strptime(x, con.DEFAULT_DT_FORMAT)
         for file in os.listdir(self.data_dir()):
+            file_path = os.path.join(self.data_dir(), file)
             try:
-                df_tmp = pd.read_csv(file, parse_dates=[con.DATETIME])
-                df_tmp.rename(columns={con.DATETIME: con.DATE_TIME,
+                df_tmp = pd.read_csv(file_path, parse_dates=[con.DATE], date_parser=date_parser)
+
+                # Check minimun required columns
+                if not set(set(con.DATASET_MIN_COLS)).issubset(df_tmp.columns):
+                    error_fun.write_error(sys.argv[0], f"incorrect data structure for file {file_path}", 
+                                "error", datetime.datetime.now())
+                    continue
+
+                df_tmp.rename(columns={con.DATE: con.DATE_TIME,
                                        con.LAT: con.LATITUDE, 
                                        con.LON: con.LONGITUDE}, inplace=True)
 
-                # Check minimun required columns
-                if not set(df_tmp.columns).issubset(con.DATASET_MIN_COLS):
-                    utils.errors.write_error(sys.argv[0], f"incorrect data structure for file {file}", 
-                                "error", datetime.now())
-                    continue
+                
 
                 df = pd.concat([df, df_tmp])
 
             except Exception as e:
-                utils.errors.write_error(sys.argv[0], e, 
-                                "error", datetime.now())
+                error_fun.write_error(sys.argv[0], e, 
+                                "error", datetime.datetime.now())
 
     
         if df.empty:
             raise Exception("Not possible to load data. Check error log.")
+        
+        print(f"{TAB}{TAB}Done.")
         
         return df
 
@@ -163,62 +212,90 @@ class FBPopulationDensity(PopulationDensity):
                 Name: n_baseline, dtype: float64
                 
         """
+        print(f"{TAB}Builds raw dataset.")
         df_raw = self.load_from_file()
 
         # brings data to fb datetime intervals
-        df_raw[con.DATE_TIME] = df_raw[con.DATE_TIME].apply(utils.facebook.to_fb_date())
+        df_raw[con.DATE_TIME] = df_raw[con.DATE_TIME].apply(fb_fun.to_fb_date)
 
         # extract date of week for comparison
-        df_raw[con.DAY_OF_WEEK] = df_raw[con.DATE_TIME].weekday()
-        df_raw[con.HOUR] = df_raw[con.DATE_TIME].hour
+        df_raw[con.DAY_OF_WEEK] = df_raw[con.DATE_TIME].dt.weekday
+        df_raw[con.HOUR] = df_raw[con.DATE_TIME].dt.hour
 
-        # builds ids
+        # builds latitude, longitude and geometry ids
         if self.agg_geometry() == 'admin':
-            return NotImplemented
+            try:
+                gdf = gpd.read_file(self.__geo_file)
+            except Exception as e:
+                error_fun.write_error(sys.argv[0], e, 
+                                "error", datetime.datetime.now())
+                return
+            gdf_raw = gpd.GeoDataFrame(
+                df_raw, geometry=gpd.points_from_xy(df_raw[con.LONGITUDE], df_raw[con.LATITUDE]), crs="EPSG:4326"
+            )
+            gdf_raw = gdf_raw[[con.GEOMETRY, con.LATITUDE, con.LONGITUDE, con.ID]]
+            gdf_raw = gdf.sjoin(gdf_raw, how="inner", predicate='contains')
+            df_raw = pd.DataFrame(gdf_raw.drop(columns=[con.GEOMETRY]))
         
         if self.agg_geometry() == 'tile':
-            tile_ids = utils.facebook.extract_quad_keys(df_raw[[con.LAT, con.LON]].to_numpy())
+            tile_lat, tile_lon, tile_ids = fb_fun.extract_quad_keys(df_raw[[con.LATITUDE, con.LONGITUDE]].to_numpy())
             df_raw[self.__geo_col_name] = tile_ids.tolist()
+            df_raw[con.LATITUDE] = tile_lat.tolist()
+            df_raw[con.LONGITUDE] = tile_lon.tolist()
 
         # If the same person appeared at multiple locations in a time interval we only count their most frequent location.
         df_raw.sort_values(con.DATE_TIME, inplace=True)
-        df_raw.drop_duplicates(subset=[self.__geo_col_name, con.DATE_TIME], 
+        df_raw.drop_duplicates(subset=[con.ID, con.DATE_TIME], 
                                 keep="last", inplace=True)
+        
+        # agregates
+        group_by_cols = [con.LATITUDE, con.LONGITUDE, con.DATE_TIME] + self.__baseline_cols
+        df_raw["count"] = 1
+        df = df_raw.groupby(group_by_cols)["count"].sum().reset_index()
                 
         # build baseline
-        df_baseline_raw = df_raw[df_raw[con.DATE_TIME] < self.crisis_datetime()]
-        cols_to_drop = set(df_baseline_raw.columns) - set([self.__geo_col_name, 
-                                                           con.DAY_OF_WEEK, con.HOUR])
+        print(f"{TAB}{TAB}Builds baseline.")
+        df_baseline_raw = df[df[con.DATE_TIME] < self.crisis_datetime()]
+        if df_baseline_raw.empty:
+            error_fun.write_error(sys.argv[0], f"No data found before disaster date. Can't build baseline.", 
+                                "warning", datetime.datetime.now())
+        else:
+            group_by_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+            df_baseline = df_baseline_raw.groupby(group_by_cols, as_index=False) \
+                                                    .agg({"count": ['mean','std']})
+            
+            # df_baseline.rename(columns={"count" : con.N_BASELINE}, inplace=True)
+            
+            baseline_cols = group_by_cols + [con.N_BASELINE, 'n_baseline_std']
+            df_baseline.columns = baseline_cols
+            
+            # make sure std is at least 0.1
+            df_baseline['n_baseline_std'] = df_baseline['n_baseline_std'].fillna(con.MIN_STD)
+            df_baseline.loc[df_baseline['n_baseline_std'] < con.MIN_STD,'n_baseline_std' ] =  con.MIN_STD
 
-        df_baseline_raw.drop(columns=cols_to_drop, inplace=True)
-        df_baseline_raw[con.N_BASELINE] = 1
+            self.__baseline = df_baseline
 
-        df_baseline = df_baseline_raw.groupby([self.__geo_col_name, 
-                                               con.DAY_OF_WEEK, con.HOUR], as_index=False) \
-                                                .agg({con.N_BASELINE:['mean','std']})
-        
-        df_baseline.columns = [self.__geo_col_name, con.DAY_OF_WEEK, 
-                               con.HOUR, con.N_BASELINE, 'n_baseline_std']
-        
-        # make sure std is at least 0.1
-        df_baseline.loc[df_baseline['n_baseline_std'] < con.MIN_STD,'n_baseline_std' ] =  con.MIN_STD
-
-        self.__baseline = df_baseline
+        self.__baseline_loaded = True
 
         # build crisis
-        df_crisis_raw = df_raw[df_raw[con.DATE_TIME] >= self.crisis_datetime()]
-        cols_to_drop = set(df_crisis_raw.columns) - set([self.__geo_col_name, 
-                                                         con.DAY_OF_WEEK, con.HOUR, con.DATE_TIME])
+        print(f"{TAB}{TAB}Builds crisis.")
+        df_crisis = df[df[con.DATE_TIME] >= self.crisis_datetime()]
+        if df_crisis.empty:
+            error_fun.write_error(sys.argv[0], f"No data found after disaster date. Can't build crisis.", 
+                                "warning", datetime.datetime.now())
+            
+            self.__crisis = df_crisis
+        else:
+            df_crisis.rename(columns={"count": con.N_CRISIS}, inplace=True)
+            self.__crisis = df_crisis
 
-        df_crisis_raw.drop(columns=cols_to_drop, inplace=True)
-        df_crisis_raw[con.CRISIS] = 1
-        df_crisis = df_crisis_raw.groupby([self.__geo_col_name, con.DAY_OF_WEEK, 
-                                           con.HOUR, con.DATE_TIME])[con.CRISIS] \
-                                            .mean().reset_index()
-        self.__crisis = df_crisis
+        self.__crisis_loaded = True
+        print(f"{TAB}{TAB}Done.")
+ 
+        
 
     def write_dataset_to_file(self):
-        out_folder = os.path.join(con.DATA_FOLDER, f"{self.dataset_id()}", 
+        out_folder = os.path.join(self.__out_dir, f"{self.dataset_id()}", 
                             f"dataset=population-density", f"scale={self.__agg_geometry}")
         
         if not os.path.exists(out_folder):
@@ -234,4 +311,7 @@ class FBPopulationDensity(PopulationDensity):
 
                 df_tmp = self.__data.loc[self.__data[con.DS == date] & self.__data[con.HOUR == hour]]
                 df_tmp[con.DS] = date_str
-                df_tmp[con.FB_POP_DENSITY_COLS].to_csv(out_file, index=False)
+                if self.__agg_geometry == "tile":
+                    df_tmp[con.FB_TILE_POP_DENSITY_COLS].to_csv(out_file, index=False)
+                elif self.__agg_geometry == "admin":
+                    df_tmp[con.FB_ADMIN_POP_DENSITY_COLS].to_csv(out_file, index=False)
