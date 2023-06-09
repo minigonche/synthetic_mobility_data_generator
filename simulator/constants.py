@@ -12,6 +12,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config.js
 # Global constants from config
 DATA_FOLDER = CONFIG['data_folder']
 CACHE_FOLDER = CONFIG["cache_folder"] 
+RESULTS_FOLDER = CONFIG["results_folder"] 
 ERRORS_FOLDER = CONFIG["errors_folder"]
 ERRORS_FILE = "errors.csv"
 
