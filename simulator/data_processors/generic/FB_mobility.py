@@ -9,6 +9,7 @@ import simulator.utils.general as fun
 import simulator.utils.errors as error_fun
 import simulator.utils.facebook as fb_fun
 import simulator.constants as con
+import simulator.utils.geometric as geo_fun
 from simulator.data_processors.abstract.data_processor import DataProcessor
 
 TAB = "  "
@@ -140,12 +141,18 @@ class FBMobility(DataProcessor):
                                     f"Can't calculate statistics without baseline data.", 
                             "warning", datetime.datetime.now())
             return 
+        
 
         # Merge left will remove entries that dont' have a baseline. This is NOT IDEAL
         # but it is currenlty how Data for Good handles it.
-        merge_cols = [con.START_LATITUDE, con.START_LONGITUDE, con.END_LATITUDE, con.END_LONGITUDE] + self.__baseline_cols
+        merge_cols = [con.FB_START_LATITUDE, con.FB_START_LONGITUDE, con.FB_END_LATITUDE, con.FB_END_LONGITUDE] + self.__baseline_cols
         df = self.baseline().merge(self.crisis(), 
                     on=merge_cols, how="inner")
+        
+        #  Add length
+        df[con.LENGTH_KM] = df.apply(lambda x: geo_fun.haversine(x[con.FB_START_LONGITUDE], 
+                                                                    x[con.FB_START_LATITUDE], x[con.FB_END_LONGITUDE],
+                                                                        x[con.FB_END_LATITUDE]), axis=1)
 
         df[con.N_DIFFERENCE] = df[con.N_CRISIS] - df[con.N_BASELINE]
         df[con.PERCENT_CHANGE] = df[con.N_DIFFERENCE] * 100 / (df[con.N_BASELINE] + con.EPSILON)
@@ -199,18 +206,25 @@ class FBMobility(DataProcessor):
                 error_fun.write_error(sys.argv[0], e, 
                                 "error", datetime.datetime.now())
                 return
+            gdf = gdf[[con.GEOMETRY, con.ADMIN_KEY]]
+
+
             gdf_raw = gpd.GeoDataFrame(
-                df_raw, geometry=gpd.points_from_xy(df_raw[con.LONGITUDE], df_raw[con.LATITUDE]), crs="EPSG:4326"
+                df_raw, geometry=gpd.points_from_xy(df_raw[con.FB_LONGITUDE], df_raw[con.FB_LATITUDE]), crs="EPSG:4326"
             )
-            gdf_raw = gdf_raw[[con.GEOMETRY, con.LATITUDE, con.LONGITUDE, con.ADMIN_KEY]]
-            gdf_raw = gdf.sjoin(gdf_raw, how="inner", predicate='contains')
+            gdf_raw = gdf.sjoin(gdf_raw, how="left", predicate='contains')
+            
+            gdf_raw["centroid"] = gdf_raw[con.GEOMETRY].centroid
+            gdf_raw[con.FB_LONGITUDE] = gdf_raw["centroid"].x
+            gdf_raw[con.FB_LATITUDE] = gdf_raw["centroid"].y
+
             df_raw = pd.DataFrame(gdf_raw.drop(columns=[con.GEOMETRY]))
         
         if self.agg_geometry() == 'tile':
-            tile_lat, tile_lon, tile_ids = fb_fun.extract_quad_keys(df_raw[[con.LATITUDE, con.LONGITUDE]].to_numpy())
+            tile_lat, tile_lon, tile_ids = fb_fun.extract_quad_keys(df_raw[[con.FB_LATITUDE, con.FB_LONGITUDE]].to_numpy())
             df_raw[self.__geo_col_name] = tile_ids.tolist()
-            df_raw[con.LATITUDE] = tile_lat.tolist()
-            df_raw[con.LONGITUDE] = tile_lon.tolist()
+            df_raw[con.FB_LATITUDE] = tile_lat.tolist()
+            df_raw[con.FB_LONGITUDE] = tile_lon.tolist()
 
         # If the same person appeared at multiple locations in a time interval we only count their most frequent location.
         df_raw.sort_values(con.DATE_TIME, inplace=True)
@@ -229,24 +243,28 @@ class FBMobility(DataProcessor):
             end = dates[idx + 1]
             # creates start and end dataframes
             df_start = df_raw[df_raw[con.DATE_TIME] == start].copy()
-            df_start.rename(columns={con.LATITUDE : con.START_LATITUDE, 
-                                        con.LONGITUDE : con.START_LONGITUDE,
-                                        con.QUAD_KEY : con.START_QUADKEY}, inplace=True)
+            df_start.rename(columns={con.FB_LATITUDE : con.FB_START_LATITUDE, 
+                                        con.FB_LONGITUDE : con.FB_START_LONGITUDE,
+                                        self.__geo_col_name : f"start_{self.__geo_col_name}"}, inplace=True)
+            print(df_start.head())
             df_end = df_raw[df_raw[con.DATE_TIME] == end].copy()
-            df_end.rename(columns={con.LATITUDE : con.END_LATITUDE, 
-                            con.LONGITUDE : con.END_LONGITUDE, con.QUAD_KEY : con.END_QUADKEY}, inplace=True)
+            df_end.rename(columns={con.FB_LATITUDE : con.FB_END_LATITUDE, 
+                            con.FB_LONGITUDE : con.FB_END_LONGITUDE, 
+                            self.__geo_col_name : f"end_{self.__geo_col_name}"}, inplace=True)
 
-            cols_drop = list(set(df_end.columns) - set([con.ID, con.END_LATITUDE, 
-                                                con.END_LONGITUDE, con.END_QUADKEY]))
+            cols_drop = list(set(df_end.columns) - set([con.ID, con.FB_END_LATITUDE, 
+                                                con.FB_END_LONGITUDE, f"end_{self.__geo_col_name}"]))
             df_end.drop(columns=cols_drop, inplace=True)
+            print(df_end.head())
 
             # joins by device id
             merge_cols = [con.ID]
             df_tmp = df_start.merge(df_end, on=merge_cols, how='inner')
             df_tmp["count"] = 1
-            groupby_cols = [con.START_QUADKEY, con.END_QUADKEY, con.DATE_TIME, con.START_LATITUDE, 
-                            con.START_LONGITUDE, con.END_LATITUDE, 
-                            con.END_LONGITUDE, con.DAY_OF_WEEK, con.HOUR]
+            groupby_cols = self.__baseline_cols + [con.DATE_TIME, con.FB_START_LATITUDE, 
+                            con.FB_START_LONGITUDE, con.FB_END_LATITUDE, 
+                            con.FB_END_LONGITUDE, con.DAY_OF_WEEK, con.HOUR]
+            print(df_tmp.head())
             df_mov_tmp = df_tmp.groupby(groupby_cols)["count"].sum().reset_index()
             
             df_mov = pd.concat([df_mov, df_mov_tmp])
@@ -258,8 +276,8 @@ class FBMobility(DataProcessor):
             error_fun.write_error(sys.argv[0], f"No data found before disaster date. Can't build baseline.", 
                                 "warning", datetime.datetime.now())
         else:
-            group_by_cols = [con.START_LATITUDE, con.START_LONGITUDE, 
-                 con.END_LATITUDE, con.END_LONGITUDE] + self.__baseline_cols 
+            group_by_cols = [con.FB_START_LATITUDE, con.FB_START_LONGITUDE, 
+                 con.FB_END_LATITUDE, con.FB_END_LONGITUDE] + self.__baseline_cols 
             df_baseline = df_baseline_raw.groupby(group_by_cols, as_index=False) \
                                                     .agg({"count": ['mean','std']})
                         
@@ -311,3 +329,27 @@ class FBMobility(DataProcessor):
                     df_tmp[con.FB_TILE_MOBILITY_COLS].to_csv(out_file, index=False)
                 elif self.__agg_geometry == "admin":
                     df_tmp[con.FB_ADMIN_MOBILITY_COLS].to_csv(out_file, index=False)
+
+    def write_as_readymapper_output(self, out_folder):
+        
+        if not os.path.exists(out_folder):
+            print(f"{TAB}Folder {out_folder} doesn't exist. Creating it.")
+            os.mkdir(out_folder)
+
+        if self.data().empty:
+            print("No data to write.")
+            return
+
+        df = self.data()[[con.DS, con.DATE_TIME, con.FB_START_LATITUDE, 
+                          con.FB_START_LONGITUDE, con.FB_END_LATITUDE, 
+                          con.FB_END_LONGITUDE, con.PERCENT_CHANGE, con.N_CRISIS,
+                          con.N_BASELINE, con.LENGTH_KM]]
+        df[con.DATE_TIME] = df[con.DATE_TIME].dt.strftime(con.READYMAPPER_MOV_DT_FORMAT)
+
+        df.rename(columns={con.DS : con.READYMAPPER_DT, 
+                           con.FB_START_LATITUDE: con.READYMAPPER_START_LAT,
+                            con.FB_START_LONGITUDE: con.READYMAPPER_START_LON,
+                           con.FB_END_LATITUDE: con.READYMAPPER_END_LAT,
+                           con.FB_END_LONGITUDE: con.READYMAPPER_END_LON}, inplace=True)
+
+        df.to_csv(os.path.join(out_folder, "data.csv"), index=False)

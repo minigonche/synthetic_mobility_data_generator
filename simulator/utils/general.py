@@ -68,8 +68,8 @@ def load_ping_data(data_dir):
                 continue
 
             df_tmp.rename(columns={con.DATE: con.DATE_TIME,
-                                    con.LAT: con.LATITUDE, 
-                                    con.LON: con.LONGITUDE}, inplace=True)
+                                    con.LAT: con.FB_LATITUDE, 
+                                    con.LON: con.FB_LONGITUDE}, inplace=True)
 
             
             df = pd.concat([df, df_tmp])

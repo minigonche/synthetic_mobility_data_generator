@@ -136,7 +136,7 @@ class FBPopulationDensity(DataProcessor):
 
         # Merge left will remove entries that dont' have a baseline. This is NOT IDEAL
         # but it is currenlty how Data for Good handles it.
-        merge_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+        merge_cols = [con.FB_LATITUDE, con.FB_LONGITUDE] + self.__baseline_cols
         df = self.baseline().merge(self.crisis(), 
                     on=merge_cols, how="inner")
 
@@ -195,17 +195,22 @@ class FBPopulationDensity(DataProcessor):
                                 "error", datetime.datetime.now())
                 return
             gdf_raw = gpd.GeoDataFrame(
-                df_raw, geometry=gpd.points_from_xy(df_raw[con.LONGITUDE], df_raw[con.LATITUDE]), crs="EPSG:4326"
+                df_raw, geometry=gpd.points_from_xy(df_raw[con.FB_LONGITUDE], df_raw[con.FB_LATITUDE]), crs="EPSG:4326"
             )
-            gdf_raw = gdf_raw[[con.GEOMETRY, con.LATITUDE, con.LONGITUDE, con.ADMIN_KEY]]
-            gdf_raw = gdf.sjoin(gdf_raw, how="inner", predicate='contains')
+            gdf = gdf[[con.GEOMETRY, con.ADMIN_KEY]]
+            gdf_raw = gdf.sjoin(gdf_raw, how="left", predicate='contains')
+
+            
+            gdf_raw["centroid"] = gdf_raw[con.GEOMETRY].centroid
+            gdf_raw[con.FB_LONGITUDE] = gdf_raw["centroid"].x
+            gdf_raw[con.FB_LATITUDE] = gdf_raw["centroid"].y
             df_raw = pd.DataFrame(gdf_raw.drop(columns=[con.GEOMETRY]))
         
         if self.agg_geometry() == 'tile':
-            tile_lat, tile_lon, tile_ids = fb_fun.extract_quad_keys(df_raw[[con.LATITUDE, con.LONGITUDE]].to_numpy())
+            tile_lat, tile_lon, tile_ids = fb_fun.extract_quad_keys(df_raw[[con.FB_LATITUDE, con.FB_LONGITUDE]].to_numpy())
             df_raw[self.__geo_col_name] = tile_ids.tolist()
-            df_raw[con.LATITUDE] = tile_lat.tolist()
-            df_raw[con.LONGITUDE] = tile_lon.tolist()
+            df_raw[con.FB_LATITUDE] = tile_lat.tolist()
+            df_raw[con.FB_LONGITUDE] = tile_lon.tolist()
 
         # If the same person appeared at multiple locations in a time interval we only count their most frequent location.
         df_raw.sort_values(con.DATE_TIME, inplace=True)
@@ -213,7 +218,7 @@ class FBPopulationDensity(DataProcessor):
                                 keep="last", inplace=True)
         
         # agregates
-        group_by_cols = [con.LATITUDE, con.LONGITUDE, con.DATE_TIME] + self.__baseline_cols
+        group_by_cols = [con.FB_LATITUDE, con.FB_LONGITUDE, con.DATE_TIME] + self.__baseline_cols
         df_raw["count"] = 1
         df = df_raw.groupby(group_by_cols)["count"].sum().reset_index()
                 
@@ -224,7 +229,7 @@ class FBPopulationDensity(DataProcessor):
             error_fun.write_error(sys.argv[0], f"No data found before disaster date. Can't build baseline.", 
                                 "warning", datetime.datetime.now())
         else:
-            group_by_cols = [con.LATITUDE, con.LONGITUDE] + self.__baseline_cols
+            group_by_cols = [con.FB_LATITUDE, con.FB_LONGITUDE] + self.__baseline_cols
             df_baseline = df_baseline_raw.groupby(group_by_cols, as_index=False) \
                                                     .agg({"count": ['mean','std']})
             
@@ -279,3 +284,22 @@ class FBPopulationDensity(DataProcessor):
                     df_tmp[con.FB_TILE_POP_DENSITY_COLS].to_csv(out_file, index=False)
                 elif self.__agg_geometry == "admin":
                     df_tmp[con.FB_ADMIN_POP_DENSITY_COLS].to_csv(out_file, index=False)
+
+    def write_as_readymapper_output(self, out_folder):
+        
+        if not os.path.exists(out_folder):
+            print(f"{TAB}Folder {out_folder} doesn't exist. Creating it.")
+            os.mkdir(out_folder)
+
+        if self.data().empty:
+            print("No data to write.")
+            return
+        
+        df = self.data()[[con.DATE_TIME, con.FB_LATITUDE, con.FB_LONGITUDE, con.PERCENT_CHANGE]]
+        df[con.DATE_TIME] = df[con.DATE_TIME].dt.strftime(con.READYMAPPER_DT_FORMAT)
+
+        df.rename(columns={con.DATE_TIME : con.READYMAPPER_DT, 
+                           con.FB_LATITUDE: con.READYMAPPER_LAT,
+                           con.FB_LONGITUDE: con.READYMAPPER_LON}, inplace=True)
+
+        df.to_csv(os.path.join(out_folder, "data.csv"), index=False)

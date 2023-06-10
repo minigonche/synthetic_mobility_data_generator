@@ -93,6 +93,15 @@ class DataProcessor(abc.ABC):
         Loads data
         """
         return NotImplemented
+    
+    def write_dataset_to_file(self):
+        """
+        Write data to disk in FB format
+        """
 
+    def write_as_readymapper_output(self, out_folder):
+        """
+        Write data to disk in ready mapper output format
+        """
 
     

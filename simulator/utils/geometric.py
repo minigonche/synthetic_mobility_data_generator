@@ -61,14 +61,14 @@ def extract_city_centers_from_nodes(nodes):
     return gpd.GeoDataFrame( nodes[con.ID], geometry = nodes.apply(lambda row: Point(row[con.LON],row[con.LAT]), axis = 1), crs = con.USUAL_PROJECTION)
 
 
-def haversine(lon1, lat1, lon2, lat2, radians = False):
+def haversine(lon1, lat1, lon2, lat2, rads = False):
     """
     Calculate the great circle distance in kilometers between two points 
     on the earth (specified in decimal degrees)
     Taken from: https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
     """
     # convert decimal degrees to radians 
-    if not radians:
+    if not rads:
         lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
 
     # haversine formula 
@@ -78,6 +78,7 @@ def haversine(lon1, lat1, lon2, lat2, radians = False):
     c = 2 * asin(sqrt(a)) 
     r = 6371*1000 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
     return c * r
+
 
 
 def extract_samples_from_geo_frame(geo_frame : gpd.GeoDataFrame, 
