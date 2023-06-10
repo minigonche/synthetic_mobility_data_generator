@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 import geopandas as gpd
 
-class PopulationDensity(abc.ABC):
+class DataProcessor(abc.ABC):
     """
     A class used to represent simulated data as population density data.
 
@@ -83,7 +83,7 @@ class PopulationDensity(abc.ABC):
         Returns
         -------
         pd.DataFrame 
-            DataFrame with the calculated population density data
+            DataFrame with generated data
         """
         return NotImplemented
     

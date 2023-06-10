@@ -34,7 +34,6 @@ DEGREE_EQUIVALENT_IN_KM = 111.32
 
 SIMPLIFICATION_CONSTANTS_METERS = 500
 
-
 # Column Names
 POPULATION = "population"
 ID = "id"
@@ -49,6 +48,13 @@ DISTANCE = "distance"
 DATETIME = "datetime"
 GEO_ID = "geo_id"
 HOUR = "hour"
+POSITION = "position"
+DATE = "date"
+NOISE = "noise"
+LON_X = "lon_x"
+LAT_X = "lat_x"
+LAT_Y = "lat_y"
+LON_Y = "lon_y"
 
 
 # fb specific column names
@@ -57,6 +63,7 @@ LONGITUDE = "longitude"
 DATE_TIME = "date_time"
 DAY_OF_WEEK = "day_of_week"
 QUAD_KEY = "quadkey"
+ADMIN_KEY = "admin_id"
 N_BASELINE = "n_baseline"
 N_CRISIS = "n_crisis"
 N_DIFFERENCE = "n_difference"
@@ -66,24 +73,32 @@ PERCENT_CHANGE = "percent_change"
 Z_SCORE = "z_score"
 DS = "ds"
 COUNTRY = "country"
+START_LATITUDE = "start_latitude"
+START_LONGITUDE = "start_longitude"
+END_LATITUDE = "end_latitude"
+END_LONGITUDE = "end_longitude"
+START_QUADKEY = "start_quadkey"
+END_QUADKEY = "end_quadkey"
+START_ADMIN_KEY = "start_admin_id"
+END_ADMIN_KEY = "end_admin_id"
 
 # Min columns for simulated dataset
-DATASET_MIN_COLS = [ID, LAT, LON, DATETIME]
-FB_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY, COUNTRY,
+DATASET_MIN_COLS = [ID, LAT, LON, DATE]
+FB_TILE_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, QUAD_KEY,
                         DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
                         DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
-POSITION = "position"
-DATE = "date"
-NOISE = "noise"
+FB_ADMIN_POP_DENSITY_COLS = [LATITUDE, LONGITUDE, ID,
+                        DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        DENSITY_BASELINE, DENSITY_CRISIS, PERCENT_CHANGE, Z_SCORE, DS]
 
+FB_TILE_MOBILITY_COLS = [START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE, START_QUADKEY, 
+                        END_QUADKEY, DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        PERCENT_CHANGE, Z_SCORE, DS]
 
-
-LON_X = "lon_x"
-LAT_X = "lat_x"
-LAT_Y = "lat_y"
-LON_Y = "lon_y"
-
+FB_ADMIN_MOBILITY_COLS = [START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE, START_ADMIN_KEY, 
+                        END_ADMIN_KEY, DATE_TIME, N_BASELINE, N_CRISIS, N_DIFFERENCE, 
+                        PERCENT_CHANGE, Z_SCORE, DS]
 
 # Noise
 CITY_NOISE =  0.0045 # 500m in the equator
@@ -125,3 +140,6 @@ MIN_STD = 0.1
 # Node Positions
 START_NODE = "start_node"
 END_NODE = "end_node"
+
+# Dateitme constants
+DEFAULT_DT_FORMAT = '%m-%d-%Y_%H:%M:%S'
