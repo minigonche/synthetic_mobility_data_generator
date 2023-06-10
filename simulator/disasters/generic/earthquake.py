@@ -5,6 +5,8 @@ import numpy as np
 
 from simulator.disasters.abstract.disaster import Disaster
 from simulator.disasters.generic.normal_disaster_dist import NormalDisasterFun
+from simulator.disasters.generic.uniform_disaster_dist import UniformDisasterFun
+from simulator.disasters.abstract.disaster_function import DisasterFunction
 
 class Earthquake(Disaster):
     """
@@ -15,10 +17,14 @@ class Earthquake(Disaster):
                  epicenter : tuple, 
                  start_date : datetime,
                  end_date : datetime,
-                 A0 : int, 
-                 vxy : tuple, 
-                 method : str, 
-                 step_unit : str = 'hr'):
+                 A0 : int = None, 
+                 vxy : tuple = None, 
+                 method : str = None, 
+                 step_unit : str = 'hr',
+                 disaster_functions : list = None,
+                 disaster_timeline : list = None,
+                 continuity : datetime = None,
+                 continuity_fun : DisasterFunction = None):
         '''
         Constructor method
 
@@ -53,8 +59,10 @@ class Earthquake(Disaster):
         self.__start_date = start_date
         self.__end_date = end_date
         self.__epicenter = np.asarray(epicenter)
-        self.__disaster_functions = None
-        self.__disaster_timeline = None
+        self.__disaster_functions = disaster_functions
+        self.__disaster_timeline = disaster_timeline
+        self.__continuity = continuity
+        self.__continuity_fun = continuity_fun
 
         # Diaster construction Variables
         self.__A0 = A0 
@@ -127,6 +135,7 @@ class Earthquake(Disaster):
         A0 = self.__A0
         vxy = self.__vxy
 
+        
         # Checks
         assert method in ['linear', 'exponential', 'parabolic']
         assert step_unit in ['hr', 'day']
@@ -134,11 +143,23 @@ class Earthquake(Disaster):
         vxy = np.asarray(vxy)
 
         # Computes steps
-        time_step = datetime.timedelta(days = 1) if step_unit == 'day' else datetime.timedelta(hours = 1)
-        steps = (self.__end_date - self.__start_date).total_seconds()
-        steps = int(np.round(steps/time_step.total_seconds())) # Divides by unit    
+        if self.__continuity:
+            time_step = datetime.timedelta(days = 1) if step_unit == 'day' else datetime.timedelta(hours = 1)
+            steps = (self.__continuity - self.__start_date).total_seconds()
+            steps = int(np.round(steps/time_step.total_seconds())) # Divides by unit   
+        else: 
+            time_step = datetime.timedelta(days = 1) if step_unit == 'day' else datetime.timedelta(hours = 1)
+            steps = (self.__end_date - self.__start_date).total_seconds()
+            steps = int(np.round(steps/time_step.total_seconds())) # Divides by unit 
 
         print(f"      Number of steps to compute: {steps} {step_unit}")    
+
+        if self.__disaster_functions or self.__disaster_timeline:
+            assert len(self.__disaster_functions) == len(self.__disaster_timeline)
+            
+            # TODO develop resolution adjustments.
+            return
+
 
         # init
         A = A0  
@@ -149,20 +170,22 @@ class Earthquake(Disaster):
 
         for idx, step in enumerate(range(steps)):
             disaster_timeline.append(disaster_timeline[idx] + time_step)
-            
-            if method == 'linear':
-                A = (-A0 / steps) * step + A0
-            elif method == 'exponetial':
-                A = A0 * np.exp(-step)
-            elif method == 'parabolic':
-                A = (A0 / steps**2) * (-step**2) + A0
-            
-            # Define disaster function for this instant
-            disaster_function = NormalDisasterFun(mean=self.__epicenter, 
-                 variance=vxy, amplitude=A)
-            
-            disaster_functions.append(disaster_function)
-
+            if self.__continuity and ((disaster_timeline[idx] + time_step) > self.__end_date):
+                disaster_functions.append(self.__continuity_fun)
+            else:
+                if method == 'linear':
+                    A = (-A0 / steps) * step + A0
+                elif method == 'exponetial':
+                    A = A0 * np.exp(-step)
+                elif method == 'parabolic':
+                    A = (A0 / steps**2) * (-step**2) + A0
+                
+                # Define disaster function for this instant
+                disaster_function = NormalDisasterFun(mean=self.__epicenter, 
+                    variance=vxy, amplitude=A)
+                
+                disaster_functions.append(disaster_function)
+        
             # set values
             self.__disaster_functions = disaster_functions
             self.__disaster_timeline = disaster_timeline

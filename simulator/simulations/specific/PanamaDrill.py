@@ -19,8 +19,8 @@ from shapely.geometry import Point
 
 
 # Specific Variables
-start_date_str = '2023-02-28 00:00:00'
-end_date_str = '2023-03-06 00:00:00'
+start_date_str = '2017-08-20 00:00:00'
+end_date_str = '2017-08-30 00:00:00'
 population_with_coverage = 0.3 # Percentage of Population with coverage
 frequency_hours = 4
 
@@ -117,7 +117,9 @@ class PanamaDrill(Simulation):
 
 
         # Initializes movement (all devices are in nodes) 
-        device_trajectories = device_trajectories[[con.START_NODE]].groupby(con.START_NODE).apply(self.extract_destination_node).droplevel(0)
+        device_trajectories = device_trajectories[[con.START_NODE]].groupby(con.START_NODE).apply(self.extract_destination_node)
+        if device_trajectories.index.nlevels > 1:
+            device_trajectories = device_trajectories.droplevel(0)
 
         # Assigns position of lat and Lon of Start Node
         device_trajectories[con.LON] = nodes.loc[device_trajectories[con.START_NODE], con.LON].values
@@ -163,8 +165,9 @@ class PanamaDrill(Simulation):
 
             # Process node trajectories
             # --------------------------
-            new_edge_trajectories = node_trajectories[[con.START_NODE]].groupby(con.START_NODE).apply(self.extract_destination_node).droplevel(0)
-
+            new_edge_trajectories = node_trajectories[[con.START_NODE]].groupby(con.START_NODE).apply(self.extract_destination_node)
+            if new_edge_trajectories.index.nlevels > 1:
+                new_edge_trajectories = device_trajectories.droplevel(0)
             # Process edge trajectories
             # --------------------------
             # Two modes
