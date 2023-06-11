@@ -167,7 +167,7 @@ class Earthquake(Disaster):
                 variance=vxy, amplitude=A)
         disaster_timeline = [self.__start_date]
         disaster_functions = [disaster_function]
-
+        
         for idx, step in enumerate(range(steps)):
             disaster_timeline.append(disaster_timeline[idx] + time_step)
             if self.__continuity and ((disaster_timeline[idx] + time_step) > self.__end_date):

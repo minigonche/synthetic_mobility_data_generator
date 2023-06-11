@@ -278,7 +278,7 @@ class FBPopulationDensity(DataProcessor):
                 file_name = f"{self.dataset_id()}_{date_str}_{hour_str}.csv"
                 out_file = os.path.join(out_folder, file_name)
 
-                df_tmp = self.__data.loc[(self.__data[con.DS] == date) & (self.__data[con.HOUR] == hour)]
+                df_tmp = self.__data.loc[(self.__data[con.DS] == date) & (self.__data[con.DATE_TIME].dt.hour == hour)]
                 df_tmp[con.DS] = date_str
                 if self.__agg_geometry == "tile":
                     df_tmp[con.FB_TILE_POP_DENSITY_COLS].to_csv(out_file, index=False)
@@ -303,3 +303,5 @@ class FBPopulationDensity(DataProcessor):
                            con.FB_LONGITUDE: con.READYMAPPER_LON}, inplace=True)
 
         df.to_csv(os.path.join(out_folder, "data.csv"), index=False)
+        df_pivot = df.pivot_table(index=['lon', 'lat'], columns='dt', values='percent_change', aggfunc='first')
+        df_pivot.to_csv(os.path.join(out_folder, "data_pivot.csv"), index=False)

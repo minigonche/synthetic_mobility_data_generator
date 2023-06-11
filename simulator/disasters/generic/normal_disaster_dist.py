@@ -132,8 +132,8 @@ class NormalDisasterFun(DisasterFunction):
         lower_left = [self.__mean[0] - 5, self.__mean[1] - 5] # ~500 km radius
         upper_right = [self.__mean[0] + 5, self.__mean[1] + 5] # ~500 km radius
 
-        x = np.linspace(lower_left[0], upper_right[0], 50)
-        y = np.linspace(lower_left[1], upper_right[1], 50)
+        x = np.linspace(lower_left[0], upper_right[0], 100)
+        y = np.linspace(lower_left[1], upper_right[1], 100)
 
         grid = np.meshgrid(x, y)
         Z = self.__density(grid)

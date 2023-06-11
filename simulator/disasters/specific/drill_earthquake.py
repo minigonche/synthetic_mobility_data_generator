@@ -24,12 +24,12 @@ class DrillEarthQuake(Earthquake):
             start_date=datetime.strptime('2017-08-25 08:34:00', '%Y-%m-%d %H:%M:%S'),
             end_date=datetime.strptime('2017-08-26 09:00:00', '%Y-%m-%d %H:%M:%S'),
             continuity=datetime.strptime('2027-08-30 00:00:00', '%Y-%m-%d %H:%M:%S'),
-            A0 = 3, 
+            A0 = 7.6, 
             vxy = (0.5, 0.5), 
             method='exponential', 
             step_unit='hr',
             continuity_fun= UniformDisasterFun(mean=np.asarray((8.405197, -82.842022)), 
-                                                radius_km = 300,
+                                                radius_km = 100,
                                                 amplitude=1.5)
         )
      

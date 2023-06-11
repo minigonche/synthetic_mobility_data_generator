@@ -197,7 +197,7 @@ class FBMobility(DataProcessor):
         # extract date of week for comparison
         df_raw[con.DAY_OF_WEEK] = df_raw[con.DATE_TIME].dt.weekday
         df_raw[con.HOUR] = df_raw[con.DATE_TIME].dt.hour
-
+        print(df_raw.shape)
         # builds latitude, longitude and geometry ids
         if self.agg_geometry() == 'admin':
             try:
@@ -226,11 +226,12 @@ class FBMobility(DataProcessor):
             df_raw[con.FB_LATITUDE] = tile_lat.tolist()
             df_raw[con.FB_LONGITUDE] = tile_lon.tolist()
 
+        print(df_raw.shape)
         # If the same person appeared at multiple locations in a time interval we only count their most frequent location.
         df_raw.sort_values(con.DATE_TIME, inplace=True)
         df_raw.drop_duplicates(subset=[con.ID, con.DATE_TIME], 
                                 keep="last", inplace=True)
-        
+        print(df_raw.shape)
         # loop over date intervals
         dates = df_raw[con.DATE_TIME].unique() 
         start = dates[0]
@@ -246,7 +247,6 @@ class FBMobility(DataProcessor):
             df_start.rename(columns={con.FB_LATITUDE : con.FB_START_LATITUDE, 
                                         con.FB_LONGITUDE : con.FB_START_LONGITUDE,
                                         self.__geo_col_name : f"start_{self.__geo_col_name}"}, inplace=True)
-            print(df_start.head())
             df_end = df_raw[df_raw[con.DATE_TIME] == end].copy()
             df_end.rename(columns={con.FB_LATITUDE : con.FB_END_LATITUDE, 
                             con.FB_LONGITUDE : con.FB_END_LONGITUDE, 
@@ -255,7 +255,6 @@ class FBMobility(DataProcessor):
             cols_drop = list(set(df_end.columns) - set([con.ID, con.FB_END_LATITUDE, 
                                                 con.FB_END_LONGITUDE, f"end_{self.__geo_col_name}"]))
             df_end.drop(columns=cols_drop, inplace=True)
-            print(df_end.head())
 
             # joins by device id
             merge_cols = [con.ID]
@@ -264,14 +263,15 @@ class FBMobility(DataProcessor):
             groupby_cols = self.__baseline_cols + [con.DATE_TIME, con.FB_START_LATITUDE, 
                             con.FB_START_LONGITUDE, con.FB_END_LATITUDE, 
                             con.FB_END_LONGITUDE, con.DAY_OF_WEEK, con.HOUR]
-            print(df_tmp.head())
             df_mov_tmp = df_tmp.groupby(groupby_cols)["count"].sum().reset_index()
             
             df_mov = pd.concat([df_mov, df_mov_tmp])
 
         # build baseline
+        print(df_mov.shape)
         print(f"{TAB}{TAB}Builds baseline.")
         df_baseline_raw = df_mov[df_mov[con.DATE_TIME] < self.crisis_datetime()]
+        print(df_baseline_raw.shape)
         if df_baseline_raw.empty:
             error_fun.write_error(sys.argv[0], f"No data found before disaster date. Can't build baseline.", 
                                 "warning", datetime.datetime.now())
@@ -295,6 +295,7 @@ class FBMobility(DataProcessor):
         # build crisis
         print(f"{TAB}{TAB}Builds crisis.")
         df_crisis = df_mov[df_mov[con.DATE_TIME] >= self.crisis_datetime()]
+        print(df_crisis.shape)
         if df_crisis.empty:
             error_fun.write_error(sys.argv[0], f"No data found after disaster date. Can't build crisis.", 
                                 "warning", datetime.datetime.now())
@@ -323,7 +324,7 @@ class FBMobility(DataProcessor):
                 file_name = f"{self.dataset_id()}_{date_str}_{hour_str}.csv"
                 out_file = os.path.join(out_folder, file_name)
 
-                df_tmp = self.__data.loc[(self.__data[con.DS] == date) & (self.__data[con.HOUR] == hour)]
+                df_tmp = self.__data.loc[(self.__data[con.DS] == date) & (self.__data[con.DATE_TIME] == hour)]
                 df_tmp[con.DS] = date_str
                 if self.__agg_geometry == "tile":
                     df_tmp[con.FB_TILE_MOBILITY_COLS].to_csv(out_file, index=False)
@@ -347,9 +348,11 @@ class FBMobility(DataProcessor):
         df[con.DATE_TIME] = df[con.DATE_TIME].dt.strftime(con.READYMAPPER_MOV_DT_FORMAT)
 
         df.rename(columns={con.DS : con.READYMAPPER_DT, 
-                           con.FB_START_LATITUDE: con.READYMAPPER_START_LAT,
-                            con.FB_START_LONGITUDE: con.READYMAPPER_START_LON,
-                           con.FB_END_LATITUDE: con.READYMAPPER_END_LAT,
-                           con.FB_END_LONGITUDE: con.READYMAPPER_END_LON}, inplace=True)
+                           con.FB_START_LATITUDE: con.READYMAPPER_START_LATITUDE,
+                            con.FB_START_LONGITUDE: con.READYMAPPER_START_LONGITUDE,
+                           con.FB_END_LATITUDE: con.READYMAPPER_END_LATITUDE,
+                           con.FB_END_LONGITUDE: con.READYMAPPER_END_LONGITUDE}, inplace=True)
 
         df.to_csv(os.path.join(out_folder, "data.csv"), index=False)
+        df_pivot = df.pivot_table(index=['lon', 'lat'], columns='dt', values='percent_change', aggfunc='first')
+        df_pivot.to_csv(os.path.join(out_folder, "data_pivot.csv"), index=False)

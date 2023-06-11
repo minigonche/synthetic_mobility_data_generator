@@ -76,15 +76,14 @@ class UniformDisasterFun(DisasterFunction):
         """
         Uniform distribution
         """
-        lat_1 = np.radians(self.__mean[0])
-        lon_1 = np.radians(self.__mean[1])
         lat_2 = np.radians(poi[0])
         lon_2 = np.radians(poi[1])
+        lat_1 = np.ones(lat_2.size) * np.radians(self.__mean[0])
+        lon_1 = np.ones(lat_2.size) * np.radians(self.__mean[1])
 
-        if geo_fun.haversine(lon_1, lat_1, lon_2, lat_2) < self.__radius_km:
-            return self.__amplitude 
-        else:
-            return 0              
+        density = [self.__amplitude if i < self.__radius_km \
+                   else 0 for i in geo_fun.np_haversine(lon_1, lat_1, lon_2, lat_2) ]
+        return np.asarray(density)           
 
     def direction(self, pois : list) -> np.array:
         """

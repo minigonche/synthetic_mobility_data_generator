@@ -7,6 +7,7 @@ import simulator.constants as con
 import geopandas as gpd
 import pandas as pd
 from math import radians, sin, cos, asin, sqrt
+from haversine import haversine as external_haver
 
 # local imports
 import simulator.utils.errors as errors
@@ -78,6 +79,13 @@ def haversine(lon1, lat1, lon2, lat2, rads = False):
     c = 2 * asin(sqrt(a)) 
     r = 6371*1000 # Radius of earth in kilometers. Use 3956 for miles. Determines return value units.
     return c * r
+
+def np_haversine(lon1, lat1, lon2, lat2, rads = False):
+    dist = []
+    for i in range(lon1.size):
+        d = external_haver((lat1[i], lon1[i]), (lat2[i], lon2[i]), unit='km')  
+        dist.append(d)      
+    return dist
 
 
 
